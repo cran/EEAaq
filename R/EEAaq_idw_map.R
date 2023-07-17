@@ -157,12 +157,15 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
     frequency = attributes(data)$frequency
     #Estraggo le geometrie da rappresentare
     if(NUTS_level == "LAU") {
-      mappa <- LAU %>% dplyr::filter(.data$LAU_NAME %in% zone_name)
+      mappa <- LAU %>% sf::st_as_sf() %>% dplyr::filter(.data$LAU_NAME %in% zone_name)
+      #mappa <- LAU[LAU$LAU_NAME %in% zone_name, ]
     } else {
       if(NUTS_level == "NUTS0" & sum(zone_name %in% unique(NUTS$CNTR_CODE)) == length(zone_name)) {
-        zone_name <- dplyr::left_join(dplyr::tibble(CNTR_CODE = zone_name), dplyr::distinct(dplyr::filter(NUTS, .data$LEVL_CODE == 0), .data$CNTR_CODE, .data$NAME_LATN), by = "CNTR_CODE") %>% dplyr::pull(.data$NAME_LATN)
+        zone_name <- dplyr::left_join(dplyr::tibble(CNTR_CODE = zone_name), dplyr::distinct(dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == 0), .data$CNTR_CODE, .data$NAME_LATN), by = "CNTR_CODE") %>% dplyr::pull(.data$NAME_LATN)
+        #zone_name <- dplyr::left_join(dplyr::tibble(CNTR_CODE = zone_name), dplyr::distinct(NUTS[NUTS$LEVL_CODE == 0, ], .data$CNTR_CODE, .data$NAME_LATN), by = "CNTR_CODE") %>% dplyr::pull(.data$NAME_LATN)
       }
-      mappa <- NUTS %>% dplyr::filter(.data$LEVL_CODE == code_extr(NUTS_level) & .data$NAME_LATN %in% zone_name)
+      mappa <- NUTS %>% sf::st_as_sf() %>% dplyr::filter(.data$LEVL_CODE == code_extr(NUTS_level) & .data$NAME_LATN %in% zone_name)
+      #mappa <- NUTS[NUTS$LEVL_CODE == code_extr(NUTS_level) & NUTS$NAME_LATN %in% zone_name, ]
     }
   } else if("EEAaq_taggr_df_sfc" %in% class(data)) {
     mappa <- attributes(data)$zone_geometry
@@ -177,12 +180,11 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
   }
 
 
-
   #Trasformo i nomi completi negli ID
   if(NUTS_level == "LAU") {
-    zone_name <- LAU %>% dplyr::filter(.data$LAU_NAME %in% zone_name) %>% dplyr::pull(.data$LAU_ID)
+    zone_name <- LAU %>% sf::st_drop_geometry() %>% dplyr::filter(.data$LAU_NAME %in% zone_name) %>% dplyr::pull(.data$LAU_ID)
   } else if(NUTS_level != "NUTS0" & NUTS_level != "polygon") {
-    zone_name <- NUTS %>% dplyr::filter(.data$LEVL_CODE == code_extr(NUTS_level) & .data$NAME_LATN %in% zone_name) %>% dplyr::pull(.data$NUTS_ID)
+    zone_name <- NUTS %>% sf::st_drop_geometry() %>% dplyr::filter(.data$LEVL_CODE == code_extr(NUTS_level) & .data$NAME_LATN %in% zone_name) %>% dplyr::pull(.data$NUTS_ID)
   }
 
 
@@ -190,10 +192,13 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
   if(!is.null(bounds_level) & NUTS_level != "polygon") {
     if(code_extr(NUTS_level) < code_extr(bounds_level)) {
       if(bounds_level == "LAU") {
-        NUTS_LAU <- sf::st_join(dplyr::filter(LAU, .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
-        bounds <- dplyr::filter(NUTS_LAU, .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% zone_name)
+        NUTS_LAU <- sf::st_join(dplyr::filter(sf::st_as_sf(LAU), .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
+        #NUTS_LAU <- sf::st_join(LAU[LAU$CNTR_CODE %in% mappa$CNTR_CODE, ], NUTS[NUTS$LEVL_CODE == code_extr(NUTS_level) & NUTS$CNTR_CODE == mappa$CNTR_CODE, ], largest = T)
+        bounds <- dplyr::filter(sf::st_as_sf(NUTS_LAU), .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% zone_name)
+        #bounds <- NUTS_LAU[NUTS_LAU$LEVL_CODE == code_extr(NUTS_level) & NUTS_LAU$NUTS_ID %in% zone_name, ]
       } else {
-        bounds <- NUTS %>% dplyr::filter(.data$LEVL_CODE == code_extr(bounds_level) & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
+        bounds <- NUTS %>% sf::st_as_sf() %>% dplyr::filter(.data$LEVL_CODE == code_extr(bounds_level) & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
+        #bounds <- NUTS[NUTS$LEVL_CODE == code_extr(bounds_level) & substr(NUTS$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID, ]
       }
     } else if(code_extr(NUTS_level) >= code_extr(bounds_level)) {
       warning("The parameter bounds_level should be of a lower order then the parameter NUTS_level")
@@ -204,8 +209,10 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
       ind <- sf::st_intersects(LAU, mappa, sparse = T)
       bounds <- LAU[as.logical(apply(as.matrix(ind), 1, sum)),]
     } else {
-      ind <- sf::st_intersects(dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(bounds_level)), mappa, sparse = T)
-      bounds <- dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(bounds_level))[as.logical(apply(as.matrix(ind), 1, sum)),]
+      ind <- sf::st_intersects(dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == code_extr(bounds_level)), mappa, sparse = T)
+      #ind <- sf::st_intersects(NUTS[NUTS$LEVL_CODE == code_extr(bounds_level), ], mappa, sparse = T)
+      bounds <- dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == code_extr(bounds_level))[as.logical(apply(as.matrix(ind), 1, sum)),]
+      #bounds <- NUTS[NUTS$LEVL_CODE == code_extr(bounds_level),][as.logical(apply(as.matrix(ind), 1, sum)),]
     }
   } else {bounds <- NULL}
 
@@ -218,7 +225,7 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
   #}
 
   #Costruzione della griglia su cui calcolare l'idw
-  num <- ifelse(as.numeric(sum(sf::st_area(mappa))) < 1000000000, 0.005, 0.01)
+  num <- ifelse(as.numeric(sum(sf::st_area(mappa))) < 500000000, 0.0025 , ifelse(as.numeric(sum(sf::st_area(mappa))) < 1000000000, 0.005, 0.01))
   if("EEAaq_taggr_df_sfc" %notin% class(data)) {
     x <- seq(floor(sf::st_bbox(mappa$geometry)[1]), floor(sf::st_bbox(mappa$geometry)[3]) + 1, by=num)
     y <- seq(floor(sf::st_bbox(mappa$geometry)[2]), floor(sf::st_bbox(mappa$geometry)[4]) + 1, by=num)
@@ -241,11 +248,11 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
                     "TRUE" = {leaflet::colorNumeric(palette = c(c("green3", "greenyellow", "yellow", "orange", "red", "darkred")), domain = range(dplyr::pull(stats::na.omit(locations),aggr_fun)), na.color = NA)})
 
   if(dynamic == F & is.null(fill_NUTS_level)) {
-    my_plot <- function(data) {
+    my_plot <- function(date) {
       if(verbose == T) {
-        cat(paste0("Computing IDW interpolation for: ", data, ", ", which(data == times), " of ", length(times), "\n"))
+        cat(paste0("Computing IDW interpolation for: ", date, ", ", which(date == times), " of ", length(times), "\n"))
       }
-      locs <- locations %>% dplyr::filter(.data$Date == data)
+      locs <- locations %>% dplyr::filter(.data$Date == date)
       if(is.null(nmax) & is.null(maxdist)) {
         my_idw <- gstat::idw(formula = stats::as.formula(paste0(aggr_fun, " ~ 1")), locations = stats::na.omit(locs), newdata = griglia, idp = idp)
       } else if(!is.null(nmax) & is.null(maxdist)) {
@@ -258,6 +265,7 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
       colnames(my_idw)[1] <- aggr_fun
       ind <- sf::st_intersects(griglia, mappa, sparse = T)
       my_idw <- my_idw[as.logical(apply(as.matrix(ind), 1, sum)),]
+
       raster <- data.frame(var = dplyr::pull(my_idw, aggr_fun), sf::st_coordinates(my_idw))
       colnames(raster) <- c(aggr_fun, "X", "Y")
       if(is.null(bounds)) {
@@ -271,7 +279,7 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
                    ggplot2::scale_fill_stepsn(colours = c("green3", "greenyellow", "yellow", "orange", "red", "darkred"), n.breaks = 6, right = T, limits = range(dplyr::pull(stats::na.omit(locations),aggr_fun)), guide = ggplot2::guide_colorbar(title = dplyr::pull(dplyr::filter(pollutants, .data$Notation == pollutant), .data$RecommendedUnit)))
                  }) +
           #scale_fill_stepsn(colours = c("green3", "greenyellow", "yellow", "orange", "red", "darkred"), breaks = c(0,10,20,30,40,75,100), values = scales::rescale(c(0,10,20,30,40,75,100)), limits = c(0,100), oob = scales::squish) +
-          ggplot2::labs(x = "Longitude", y = "Latitude", title = paste(data)) +
+          ggplot2::labs(x = "Longitude", y = "Latitude", title = paste(date)) +
           ggplot2::geom_sf(data = locations, size = .5) +
           ggspatial::annotation_north_arrow(which_north = "true") +
           ggspatial::annotation_scale(location="br") +
@@ -289,7 +297,7 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
                    ggplot2::scale_fill_stepsn(colours = c("green3", "greenyellow", "yellow", "orange", "red", "darkred"), n.breaks = 6, right = T, limits = c(0,max(dplyr::pull(stats::na.omit(locations),aggr_fun))), guide = ggplot2::guide_colorbar(title = dplyr::pull(dplyr::filter(pollutants, .data$Notation == pollutant), .data$RecommendedUnit)))
                  }) +
           #scale_fill_stepsn(colours = c("green3", "greenyellow", "yellow", "orange", "red", "darkred"), breaks = c(0,10,20,30,40,75,100), values = scales::rescale(c(0,10,20,30,40,75,100)), limits = c(0,100), oob = scales::squish) +
-          ggplot2::labs(x = "Longitude", y = "Latitude", title = paste(data)) +
+          ggplot2::labs(x = "Longitude", y = "Latitude", title = paste(date)) +
           ggplot2::geom_sf(data = locations, size = .5) +
           ggspatial::annotation_north_arrow(which_north = "true", height = grid::unit(.7, "cm"), width = grid::unit(.7, "cm"), style = ggspatial::north_arrow_orienteering()) +
           ggspatial::annotation_scale(location="br") +
@@ -312,11 +320,11 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
 
 
   } else if(dynamic == F & !is.null(fill_NUTS_level)) {
-    my_plot <- function(data) {
+    my_plot <- function(date) {
       if(verbose == T) {
-        cat(paste0("Computing IDW interpolation for: ", data, ", ", which(data == times), " of ", length(times), "\n"))
+        cat(paste0("Computing IDW interpolation for: ", date, ", ", which(date == times), " of ", length(times), "\n"))
       }
-      locs <- locations %>% dplyr::filter(.data$Date == data)
+      locs <- locations %>% dplyr::filter(.data$Date == date)
       if(is.null(nmax) & is.null(maxdist)) {
         my_idw <- gstat::idw(formula = stats::as.formula(paste0(aggr_fun, " ~ 1")), locations = stats::na.omit(locs), newdata = griglia, idp = idp)
       } else if(!is.null(nmax) & is.null(maxdist)) {
@@ -331,15 +339,21 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
       my_idw <- my_idw[as.logical(apply(as.matrix(ind), 1, sum)),]
       my_idw <- my_idw %>% dplyr::mutate(fill = NA, fill2 = NA)
       if(fill_NUTS_level == "LAU") {
-        ind <- sf::st_intersects(my_idw$geometry, dplyr::filter(LAU, .data$CNTR_CODE %in% unique(mappa$CNTR_CODE)), sparse = T)
-        suppressWarnings(my_idw[as.logical(apply(as.matrix(ind), 1, sum)), c("fill", "fill2")] <- dplyr::filter(LAU, .data$CNTR_CODE %in% unique(mappa$CNTR_CODE))[unlist(ind), c("LAU_NAME", "LAU_ID")])
+        ind <- sf::st_intersects(my_idw$geometry, dplyr::filter(sf::st_as_sf(LAU), .data$CNTR_CODE %in% unique(mappa$CNTR_CODE)), sparse = T)
+        #ind <- sf::st_intersects(my_idw$geometry, LAU[LAU$CNTR_CODE %in% unique(mappa$CNTR_CODE), ], sparse = T)
+        suppressWarnings(my_idw[as.logical(apply(as.matrix(ind), 1, sum)), c("fill", "fill2")] <- dplyr::filter(sf::st_as_sf(LAU), .data$CNTR_CODE %in% unique(mappa$CNTR_CODE))[unlist(ind), c("LAU_NAME", "LAU_ID")])
+        #suppressWarnings(my_idw[as.logical(apply(as.matrix(ind), 1, sum)), c("fill", "fill2")] <- LAU[LAU$CNTR_CODE %in% unique(mappa$CNTR_CODE), ][unlist(ind), c("LAU_NAME", "LAU_ID")])
         vals <- sf::st_drop_geometry(my_idw) %>% dplyr::group_by(.data$fill, .data$fill2) %>% dplyr::summarise(summ = mean(get(aggr_fun)), .groups = "keep") %>% dplyr::rename("LAU_NAME" = .data$fill) %>% dplyr::rename("LAU_ID" = .data$fill2)
-        vals <- dplyr::left_join(vals, dplyr::select(dplyr::filter(LAU, .data$CNTR_CODE %in% unique(mappa$CNTR_CODE)), "geometry", "LAU_NAME", "LAU_ID"), by = c("LAU_NAME", "LAU_ID")) %>% sf::st_as_sf()
+        vals <- dplyr::left_join(vals, dplyr::select(dplyr::filter(sf::st_as_sf(LAU), .data$CNTR_CODE %in% unique(mappa$CNTR_CODE)), "geometry", "LAU_NAME", "LAU_ID"), by = c("LAU_NAME", "LAU_ID")) %>% sf::st_as_sf()
+        #vals <- dplyr::left_join(vals, dplyr::select(LAU[LAU$CNTR_CODE %in% unique(mappa$CNTR_CODE), ], "geometry", "LAU_NAME", "LAU_ID"), by = c("LAU_NAME", "LAU_ID")) %>% sf::st_as_sf()
       } else {
-        ind <- sf::st_intersects(my_idw$geometry, dplyr::filter(NUTS, .data$CNTR_CODE %in% unique(mappa$CNTR_CODE) & .data$LEVL_CODE == code_extr(fill_NUTS_level)), sparse = T)
-        suppressWarnings(my_idw[as.logical(apply(as.matrix(ind), 1, sum)), "fill"] <- dplyr::filter(NUTS, .data$CNTR_CODE %in% unique(mappa$CNTR_CODE) & .data$LEVL_CODE == code_extr(fill_NUTS_level))[unlist(ind), "NAME_LATN"])
+        ind <- sf::st_intersects(my_idw$geometry, dplyr::filter(sf::st_as_sf(NUTS), .data$CNTR_CODE %in% unique(mappa$CNTR_CODE) & .data$LEVL_CODE == code_extr(fill_NUTS_level)), sparse = T)
+        #ind <- sf::st_intersects(my_idw$geometry, NUTS[NUTS$CNTR_CODE %in% unique(mappa$CNTR_CODE) & NUTS$LEVL_CODE == code_extr(fill_NUTS_level), ], sparse = T)
+        suppressWarnings(my_idw[as.logical(apply(as.matrix(ind), 1, sum)), "fill"] <- dplyr::filter(sf::st_as_sf(NUTS), .data$CNTR_CODE %in% unique(mappa$CNTR_CODE) & .data$LEVL_CODE == code_extr(fill_NUTS_level))[unlist(ind), "NAME_LATN"])
+        #suppressWarnings(my_idw[as.logical(apply(as.matrix(ind), 1, sum)), "fill"] <- NUTS[NUTS$CNTR_CODE %in% unique(mappa$CNTR_CODE) & NUTS$LEVL_CODE == code_extr(fill_NUTS_level), ][unlist(ind), "NAME_LATN"])
         vals <- sf::st_drop_geometry(my_idw) %>% dplyr::group_by(.data$fill) %>% dplyr::summarise(summ = mean(get(aggr_fun))) %>% dplyr::rename("NAME_LATN" = .data$fill)
-        vals <- dplyr::left_join(vals, dplyr::select(dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(fill_NUTS_level) & .data$CNTR_CODE %in% unique(mappa$CNTR_CODE)), "geometry", "NAME_LATN"), by = "NAME_LATN") %>% sf::st_as_sf()
+        vals <- dplyr::left_join(vals, dplyr::select(dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == code_extr(fill_NUTS_level) & .data$CNTR_CODE %in% unique(mappa$CNTR_CODE)), "geometry", "NAME_LATN"), by = "NAME_LATN") %>% sf::st_as_sf()
+        #vals <- dplyr::left_join(vals, dplyr::select(NUTS[NUTS$LEVL_CODE == code_extr(fill_NUTS_level) & NUTS$CNTR_CODE %in% unique(mappa$CNTR_CODE), ], "geometry", "NAME_LATN"), by = "NAME_LATN") %>% sf::st_as_sf()
       }
       #Mappa con riempimento delle zone del livello specificato senza confini interni
       if(is.null(bounds)) {
@@ -353,7 +367,7 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
                    ggplot2::scale_fill_stepsn(colours = c("green3", "greenyellow", "yellow", "orange", "red", "darkred"), n.breaks = 6, right = T, limits = c(0,max(dplyr::pull(stats::na.omit(locations),aggr_fun))), guide = ggplot2::guide_colorbar(title = dplyr::pull(dplyr::filter(pollutants, .data$Notation == pollutant), .data$RecommendedUnit)))
                  }) +
           #scale_fill_stepsn(colours = c("green3", "greenyellow", "yellow", "orange", "red", "darkred"), breaks = c(0,10,20,30,40,75,100), values = scales::rescale(c(0,10,20,30,40,75,100)), limits = c(0,100), oob = scales::squish) +
-          ggplot2::labs(x = "Longitude", y = "Latitude", title = paste(data)) +
+          ggplot2::labs(x = "Longitude", y = "Latitude", title = paste(date)) +
           ggplot2::geom_sf(data = locations, size = .5) +
           ggspatial::annotation_north_arrow(which_north = "true", height = grid::unit(.7, "cm"), width = grid::unit(.7, "cm"), style = ggspatial::north_arrow_orienteering()) +
           ggspatial::annotation_scale(location="br") +
@@ -370,7 +384,7 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
                    ggplot2::scale_fill_stepsn(colours = c("green3", "greenyellow", "yellow", "orange", "red", "darkred"), n.breaks = 6, right = T, limits = c(0,max(dplyr::pull(stats::na.omit(locations),aggr_fun))), guide = ggplot2::guide_colorbar(title = dplyr::pull(dplyr::filter(pollutants, .data$Notation == pollutant), .data$RecommendedUnit)))
                  }) +
           #scale_fill_stepsn(colours = c("green3", "greenyellow", "yellow", "orange", "red", "darkred"), breaks = c(0,10,20,30,40,75,100), values = scales::rescale(c(0,10,20,30,40,75,100)), limits = c(0,100), oob = scales::squish) +
-          ggplot2::labs(x = "Longitude", y = "Latitude", title = paste(data)) +
+          ggplot2::labs(x = "Longitude", y = "Latitude", title = paste(date)) +
           ggplot2::geom_sf(data = locations, size = .5) +
           ggspatial::annotation_north_arrow(which_north = "true", height = grid::unit(.7, "cm"), width = grid::unit(.7, "cm"), style = ggspatial::north_arrow_orienteering()) +
           ggspatial::annotation_scale(location="br") +
@@ -406,11 +420,16 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
                   options = leaflet::pathOptions(pane = "polygons"), group = ifelse(NUTS_level != "LAU", paste("NUTS", code_extr(NUTS_level)), "LAU"))
 
     if(NUTS_level == "NUTS0") {
-      mappa_nuts1 <- dplyr::filter(NUTS, .data$LEVL_CODE == 1 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
-      mappa_nuts2 <- dplyr::filter(NUTS, .data$LEVL_CODE == 2 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
-      mappa_nuts3 <- dplyr::filter(NUTS, .data$LEVL_CODE == 3 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
-      NUTS_LAU <- sf::st_join(dplyr::filter(LAU, .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
-      mappa_lau <- dplyr::filter(NUTS_LAU, .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
+      mappa_nuts1 <- dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == 1 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
+      mappa_nuts2 <- dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == 2 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
+      mappa_nuts3 <- dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == 3 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
+      #mappa_nuts1 <- NUTS[NUTS$LEVL_CODE == 1 & substr(NUTS$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID, ]
+      #mappa_nuts2 <- NUTS[NUTS$LEVL_CODE == 2 & substr(NUTS$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID, ]
+      #mappa_nuts3 <- NUTS[NUTS$LEVL_CODE == 3 & substr(NUTS$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID, ]
+      NUTS_LAU <- sf::st_join(dplyr::filter(sf::st_as_sf(LAU), .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
+      #NUTS_LAU <- sf::st_join(LAU[LAU$CNTR_CODE %in% mappa$CNTR_CODE,], NUTS[NUTS$LEVL_CODE == code_extr(NUTS_level) & NUTS$CNTR_CODE == mappa$CNTR_CODE, ], largest = T)
+      mappa_lau <- dplyr::filter(sf::st_as_sf(NUTS_LAU), .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
+      #mappa_lau <- NUTS_LAU[NUTS_LAU$LEVL_CODE == code_extr(NUTS_level) & NUTS_LAU$NUTS_ID %in% mappa$NUTS_ID, ]
       map <- leaflet::addPolygons(map = map, data = mappa_nuts1, group = "NUTS 1", color = "black",  weight = 1.5,
                          smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
@@ -428,10 +447,14 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
                     highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
                     options = leaflet::pathOptions(pane = "polygons"))
     } else if(NUTS_level == "NUTS1") {
-      mappa_nuts2 <- dplyr::filter(NUTS, .data$LEVL_CODE == 2 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
-      mappa_nuts3 <- dplyr::filter(NUTS, .data$LEVL_CODE == 3 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
-      NUTS_LAU <- sf::st_join(dplyr::filter(LAU, .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
-      mappa_lau <- dplyr::filter(NUTS_LAU, .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
+      mappa_nuts2 <- dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == 2 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
+      mappa_nuts3 <- dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == 3 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
+      #mappa_nuts2 <- NUTS[NUTS$LEVL_CODE == 2 & substr(NUTS$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID, ]
+      #mappa_nuts3 <- NUTS[NUTS$LEVL_CODE == 3 & substr(NUTS$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID, ]
+      NUTS_LAU <- sf::st_join(dplyr::filter(sf::st_as_sf(LAU), .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
+      #NUTS_LAU <- sf::st_join(LAU[LAU$CNTR_CODE %in% mappa$CNTR_CODE, ], NUTS[NUTS$LEVL_CODE == code_extr(NUTS_level) & NUTS$CNTR_CODE == mappa$CNTR_CODE, ], largest = T)
+      mappa_lau <- dplyr::filter(sf::st_as_sf(NUTS_LAU), .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
+      #mappa_lau <- NUTS_LAU[NUTS_LAU$LEVL_CODE == code_extr(NUTS_level) & NUTS_LAU$NUTS_ID %in% mappa$NUTS_ID, ]
       map <- leaflet::addPolygons(map = map, data = mappa_nuts2, group = "NUTS 2", color = "black",  weight = 1.2,
                          smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts2$NAME_LATN,
@@ -445,9 +468,12 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
                     highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
                     options = leaflet::pathOptions(pane = "polygons"))
     } else if(NUTS_level == "NUTS2") {
-      mappa_nuts3 <- dplyr::filter(NUTS, .data$LEVL_CODE == 3 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
-      NUTS_LAU <- sf::st_join(dplyr::filter(LAU, .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
-      mappa_lau <- dplyr::filter(NUTS_LAU, .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
+      mappa_nuts3 <- dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == 3 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
+      #mappa_nuts3 <- NUTS[NUTS$LEVLE_CODE == 3 & substr(NUTS$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID]
+      NUTS_LAU <- sf::st_join(dplyr::filter(sf::st_as_sf(LAU), .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
+      #NUTS_LAU <- sf::st_join(LAU[LAU$CNTR_CODE %in% mappa$CNTR_CODE, ], NUTS[NUTS$LEVL_CODE == code_extr(NUTS_level) & NUTS$CNTR_CODE == mappa$CNTR_CODE, ], largest = T)
+      mappa_lau <- dplyr::filter(sf::st_as_sf(NUTS_LAU), .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
+      #mappa_lau <- NUTS_LAU[NUTS_LAU$LEVL_CODE == code_extr(NUTS_level) & NUTS_LAU$NUTS_ID %in% mappa$NUTS_ID, ]
       map <- leaflet::addPolygons(map = map, data = mappa_nuts3, group = "NUTS 3", color = "black",  weight = 1,
                          smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
@@ -457,8 +483,10 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
                     highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
                     options = leaflet::pathOptions(pane = "polygons"))
     } else if(NUTS_level == "NUTS3") {
-      NUTS_LAU <- sf::st_join(dplyr::filter(LAU, .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
-      mappa_lau <- dplyr::filter(NUTS_LAU, .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
+      NUTS_LAU <- sf::st_join(dplyr::filter(sf::st_as_sf(LAU), .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
+      #NUTS_LAU <- sf::st_join(LAU[LAU$CNTR_CODE %in% mappa$CNTR_CODE, ], NUTS[NUTS$LEVL_CODE == code_extr(NUTS_level) & NUTS$CNTR_CODE == mappa$CNTR_CODE, ], largest = T)
+      mappa_lau <- dplyr::filter(sf::st_as_sf(NUTS_LAU), .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
+      #mappa_lau <- NUTS_LAU[NUTS_LAU$LEVL_CODE == code_extr(NUTS_level) & NUTS_LAU$NUTS_ID %in% mappa$NUTS_ID, ]
       map <- leaflet::addPolygons(map = map, data = mappa_lau, group = "LAU", color = "black",  weight = .5,
                          smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
@@ -482,11 +510,15 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
       } else if(!is.null(nmax) & !is.null(maxdist)) {
         my_idw <- gstat::idw(formula = stats::as.formula(paste0(aggr_fun, " ~ 1")), locations = stats::na.omit(locs), newdata = griglia, idp = idp, nmax = nmax, maxdist = maxdist)
       }
+
       colnames(my_idw)[1] <- aggr_fun
       ind <- sf::st_intersects(griglia, mappa, sparse = T)
       my_idw <- my_idw[as.logical(apply(as.matrix(ind), 1, sum)),]
       raster <- data.frame(mean = dplyr::pull(my_idw, aggr_fun), sf::st_coordinates(my_idw))
-      raster <- raster::rasterFromXYZ(data.frame(raster[,2:3], raster[,1]), crs = sp::CRS("EPSG:4326"))
+      raster <- raster::rasterFromXYZ(data.frame(raster[,2:3], raster[,1]))#, crs = sp::CRS("EPSG:4326"))
+      raster::crs(raster) <- 4326
+      #raster <- data.frame(sf::st_coordinates(my_idw), mean = dplyr::pull(my_idw, aggr_fun))
+      #raster <- terra::rast(raster, type = "xyz", crs = "epsg:4326")
       map <- leaflet::addRasterImage(map = map, x = raster, colors = pal_idw, group = times[i]) %>%
         leaflet::addCircleMarkers(data = dplyr::filter(locations, .data$Date == times[i]), label = ~AirQualityStationEoICode, fillColor = "black", fillOpacity = 1, radius = 2, stroke = F, labelOptions = leaflet::labelOptions(bringToFront = T), options = leaflet::pathOptions(pane = "circles"),
                          group = times[i], popup = paste0(stringr::str_to_title(aggr_fun), ": ", round(dplyr::pull(dplyr::filter(locations, .data$Date == times[i]), get(aggr_fun)), 2)))
@@ -635,7 +667,8 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
       ind <- sf::st_intersects(griglia, mappa, sparse = T)
       my_idw <- my_idw[as.logical(apply(as.matrix(ind), 1, sum)),]
       raster <- data.frame(mean = dplyr::pull(my_idw, aggr_fun), sf::st_coordinates(my_idw))
-      raster <- raster::rasterFromXYZ(data.frame(raster[,2:3], raster[,1]), crs = sp::CRS("EPSG:4326"))
+      raster <- raster::rasterFromXYZ(data.frame(raster[,2:3], raster[,1]))#, crs = sp::CRS("EPSG:4326"))
+      raster::crs(raster) <- 4326
       map <- leaflet::addRasterImage(map = map, x = raster, colors = pal_idw, group = times[i]) %>%
         leaflet::addCircleMarkers(data = dplyr::filter(locations, .data$Date == times[i]), label = ~AirQualityStationEoICode, fillColor = "black", fillOpacity = 1, radius = 2, stroke = F, labelOptions = leaflet::labelOptions(bringToFront = T), options = leaflet::pathOptions(pane = "circles"),
                          group = times[i], popup = paste0(stringr::str_to_title(aggr_fun), ": ", round(dplyr::pull(dplyr::filter(locations, .data$Date == times[i]), get(aggr_fun)), 2), "<br>",  "EoI Code: ", dplyr::pull(dplyr::filter(locations, .data$Date == times[i]), .data$AirQualityStationEoICode), "Station name: ", dplyr::pull(dplyr::filter(locations, .data$Date == times[i]), .data$AirQualityStationName)))
@@ -698,10 +731,13 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
       my_idw <- my_idw[as.logical(apply(as.matrix(ind), 1, sum)),]
       if(fill_NUTS_level != "LAU") {
         vals <- my_idw %>% dplyr::mutate(fill = NA)
-        ind <- sf::st_intersects(vals$geometry, dplyr::filter(NUTS, .data$CNTR_CODE %in% unique(mappa$CNTR_CODE) & .data$LEVL_CODE == code_extr(fill_NUTS_level)), sparse = T)
-        suppressWarnings(vals[as.logical(apply(as.matrix(ind), 1, sum)), "fill"] <- dplyr::filter(NUTS, .data$CNTR_CODE %in% unique(mappa$CNTR_CODE) & .data$LEVL_CODE == code_extr(fill_NUTS_level))[unlist(ind), "NAME_LATN"])
+        ind <- sf::st_intersects(vals$geometry, dplyr::filter(sf::st_as_sf(NUTS), .data$CNTR_CODE %in% unique(mappa$CNTR_CODE) & .data$LEVL_CODE == code_extr(fill_NUTS_level)), sparse = T)
+        #ind <- sf::st_intersects(vals$geometry, NUTS[NUTS$CNTR_CODE %in% unique(mappa$CNTR_CODE) & NUTS$LEVL_CODE == code_extr(fill_NUTS_level), ], sparse = T)
+        suppressWarnings(vals[as.logical(apply(as.matrix(ind), 1, sum)), "fill"] <- dplyr::filter(sf::st_as_sf(NUTS), .data$CNTR_CODE %in% unique(mappa$CNTR_CODE) & .data$LEVL_CODE == code_extr(fill_NUTS_level))[unlist(ind), "NAME_LATN"])
+        #suppressWarnings(vals[as.logical(apply(as.matrix(ind), 1, sum)), "fill"] <- NUTS[NUTS$CNTR_CODE %in% unique(mappa$CNTR_CODE) & NUTS$LEVL_CODE == code_extr(fill_NUTS_level), ][unlist(ind), "NAME_LATN"])
         vals <- sf::st_drop_geometry(vals) %>% dplyr::group_by(.data$fill) %>% dplyr::summarise(summ = mean(get(aggr_fun))) %>% dplyr::ungroup() %>% dplyr::rename("NAME_LATN" = .data$fill)
-        vals <- dplyr::left_join(vals, dplyr::select(dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(fill_NUTS_level) & .data$CNTR_CODE %in% unique(mappa$CNTR_CODE)), "geometry", "NAME_LATN"), by = "NAME_LATN") %>% sf::st_as_sf(crs = 4326)
+        vals <- dplyr::left_join(vals, dplyr::select(dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == code_extr(fill_NUTS_level) & .data$CNTR_CODE %in% unique(mappa$CNTR_CODE)), "geometry", "NAME_LATN"), by = "NAME_LATN") %>% sf::st_as_sf(crs = 4326)
+        #vals <- dplyr::left_join(vals, dplyr::select(NUTS[NUTS$LEVL_CODE == code_extr(fill_NUTS_level) & NUTS$CNTR_CODE %in% unique(mappa$CNTR_CODE), ], "geometry", "NAME_LATN"), by = "NAME_LATN") %>% sf::st_as_sf(crs = 4326)
         map <- leaflet::addPolygons(map = map, color = "black", weight = .5, smoothFactor = 0.5,opacity = 1.0, fillOpacity = 1,
                            fillColor = pal_idw(x = vals$summ), data = vals, highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
                            options = leaflet::pathOptions(pane = "polygons"), group = times[i], popup = paste0(fill_NUTS_level,": ",vals$NAME_LATN, "<br>", stringr::str_to_title(aggr_fun),": ", round(vals$summ,2))) %>%
@@ -709,10 +745,13 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
                            group = times[i], popup = paste0(stringr::str_to_title(aggr_fun), ": ", round(dplyr::pull(dplyr::filter(locations, .data$Date == times[i]), get(aggr_fun)), 2)))
       } else {
         vals <- my_idw %>% dplyr::mutate(fill = NA)
-        ind <- sf::st_intersects(vals$geometry, dplyr::filter(LAU, .data$CNTR_CODE %in% unique(mappa$CNTR_CODE)), sparse = T)
-        suppressWarnings(vals[as.logical(apply(as.matrix(ind), 1, sum)), "fill"] <- dplyr::filter(LAU, .data$CNTR_CODE %in% unique(mappa$CNTR_CODE))[unlist(ind), "LAU_NAME"])
+        ind <- sf::st_intersects(vals$geometry, dplyr::filter(sf::st_as_sf(LAU), .data$CNTR_CODE %in% unique(mappa$CNTR_CODE)), sparse = T)
+        #ind <- sf::st_intersects(vals$geometry, LAU[LAU$CNTR_CODE %in% unique(mappa$CNTR_CODE), ], sparse = T)
+        suppressWarnings(vals[as.logical(apply(as.matrix(ind), 1, sum)), "fill"] <- dplyr::filter(sf::st_as_sf(LAU), .data$CNTR_CODE %in% unique(mappa$CNTR_CODE))[unlist(ind), "LAU_NAME"])
+        #suppressWarnings(vals[as.logical(apply(as.matrix(ind), 1, sum)), "fill"] <- LAU[LAU$CNTR_CODE %in% unique(mappa$CNTR_CODE), ][unlist(ind), "LAU_NAME"])
         vals <- sf::st_drop_geometry(vals) %>% dplyr::group_by(.data$fill) %>% dplyr::summarise(summ = mean(get(aggr_fun))) %>% dplyr::ungroup() %>% dplyr::rename("LAU_NAME" = .data$fill)
-        vals <- dplyr::left_join(vals, dplyr::select(dplyr::filter(LAU, .data$CNTR_CODE %in% unique(mappa$CNTR_CODE)), "geometry", "LAU_NAME"), by = "LAU_NAME") %>% sf::st_as_sf(crs = 4326)
+        vals <- dplyr::left_join(vals, dplyr::select(dplyr::filter(sf::st_as_sf(LAU), .data$CNTR_CODE %in% unique(mappa$CNTR_CODE)), "geometry", "LAU_NAME"), by = "LAU_NAME") %>% sf::st_as_sf(crs = 4326)
+        #vals <- dplyr::left_join(vals, dplyr::select(LAU[LAU$CNTR_CODE %in% unique(mappa$CNTR_CODE), ], "geometry", "LAU_NAME"), by = "LAU_NAME") %>% sf::st_as_sf(crs = 4326)
         map <- leaflet::addPolygons(map = map, color = "black", weight = .5, smoothFactor = 0.5,opacity = 1.0, fillOpacity = 1,
                            fillColor = pal_idw(x = vals$summ), data = vals, highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
                            options = leaflet::pathOptions(pane = "polygons"), group = times[i], popup = paste0(fill_NUTS_level,": ",vals$LAU_NAME, "<br>", stringr::str_to_title(aggr_fun),": ", round(vals$summ,2))) %>%
@@ -744,6 +783,7 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
     }
 
     if("gif" %in% save) {
+      #stopifnot("The package \'gifski\' is required for saving the plot as a gif. " = "gifski" %in% rownames(utils::installed.packages()))
       stopifnot("Can not save as GIF" = "ggarrange" %notin% class(map))
       gifski::save_gif(print(map), gif_file = filepath, width = width, height = height, res = res, delay = delay)
     } else if(save == "pdf") {

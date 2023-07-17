@@ -75,9 +75,9 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
 
   #Converto il parametro zone_name, nel caso vengano indicati i nomi completi delle zone, nei rispettivi ID
   if(ID == F & NUTS_level == "LAU") {
-    zone_name <- LAU %>% dplyr::filter(.data$LAU_NAME %in% zone_name) %>% dplyr::pull(.data$LAU_ID)
+    zone_name <- LAU %>% sf::st_drop_geometry() %>% dplyr::filter(.data$LAU_NAME %in% zone_name) %>% dplyr::pull(.data$LAU_ID)
   } else if(ID == F & NUTS_level != "NUTS0" & NUTS_level != "polygon") {
-    zone_name <- NUTS %>% dplyr::filter(.data$LEVL_CODE == code_extr(NUTS_level) & .data$NAME_LATN %in% zone_name) %>% dplyr::pull(.data$NUTS_ID)
+    zone_name <- NUTS %>% sf::st_drop_geometry() %>% dplyr::filter(.data$LEVL_CODE == code_extr(NUTS_level) & .data$NAME_LATN %in% zone_name) %>% dplyr::pull(.data$NUTS_ID)
   }
 
 
@@ -86,7 +86,7 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
     if(NUTS_level == "NUTS0" & ID == F) {
       if(length(zone_name) == 1) {
         if(zone_name %in% dplyr::pull(dplyr::filter(NUTS, .data$LEVL_CODE == 0), .data$NAME_LATN)) {
-          zone_name <- NUTS %>% dplyr::filter(.data$LEVL_CODE == 0 & .data$NAME_LATN %in% zone_name) %>% dplyr::pull(.data$NUTS_ID)
+          zone_name <- NUTS %>% sf::st_drop_geometry() %>% dplyr::filter(.data$LEVL_CODE == 0 & .data$NAME_LATN %in% zone_name) %>% dplyr::pull(.data$NUTS_ID)
         } else if(zone_name %in% dplyr::pull(dplyr::distinct(stations, .data$Country), .data$Country)) {
           zone_name <- stations %>% dplyr::filter(.data$Country %in% zone_name) %>% dplyr::distinct(.data$ISO) %>% dplyr::pull(.data$ISO)
         } else {
@@ -96,7 +96,7 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
         zone <- vector()
         for (i in 1:length(zone_name)) {
           if(zone_name[i] %in% dplyr::pull(dplyr::filter(NUTS, .data$LEVL_CODE == 0), .data$NAME_LATN)) {
-            zone[i] <- NUTS %>% dplyr::filter(.data$LEVL_CODE == 0 & .data$NAME_LATN %in% zone_name[i]) %>% dplyr::pull(.data$NUTS_ID)
+            zone[i] <- NUTS %>% sf::st_drop_geometry() %>% dplyr::filter(.data$LEVL_CODE == 0 & .data$NAME_LATN %in% zone_name[i]) %>% dplyr::pull(.data$NUTS_ID)
           } else if(zone_name[i] %in% dplyr::pull(dplyr::distinct(stations, .data$Country), .data$Country)) {
             zone[i] <- stations %>% dplyr::filter(.data$Country %in% zone_name[i]) %>% dplyr::distinct(.data$ISO) %>% dplyr::pull(.data$ISO)
           } else {
@@ -140,7 +140,8 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
           NUTS_LAU <- sf::st_join(dplyr::filter(LAU, .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
           bounds <- dplyr::filter(NUTS_LAU, .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% zone_name)
         } else {
-          bounds <- NUTS %>% dplyr::filter(.data$LEVL_CODE == code_extr(bounds_level) & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
+          bounds <- NUTS %>% sf::st_as_sf() %>% dplyr::filter(.data$LEVL_CODE == code_extr(bounds_level) & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
+          #bounds <- NUTS[NUTS$LEVL_CODE == code_extr(bounds_level) & substr(NUTS$NUTS_ID, 1, code_extr(NUTS_level)+2) %in% mappa$NUTS_ID, ]
         }
       } else if(code_extr(NUTS_level) >= code_extr(bounds_level)) {
         warning("The parameter bounds_level should be of a lower order then the parameter NUTS_level")

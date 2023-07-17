@@ -6,7 +6,7 @@
 #' @param frequency vector containing the time frequency for which to aggregate the \code{data} object.
 #' Admissible values are 'yearly', 'monthly', 'weekly', 'daily' 'hourly'.
 #' @param aggr_fun character vector containing one or more agregation functions. Admissible values are 'mean', 'median',
-#' 'min', 'max', 'sd', 'var', 'kurtosis', 'skewness',
+#' 'min', 'max', 'sd', 'var',
 #' 'quantile_pp' (where pp is a number in the range \[0,1\], representing the required percentile).
 #' @return A \code{EEAaq_taggr_df} or a \code{EEAaq_taggr_df_sfc} class object, which is a tibble containing the
 #' required time aggregation.
@@ -76,7 +76,8 @@ EEAaq_time_aggregate <- function(data = NULL, frequency = "monthly", aggr_fun = 
 
   #Se ci sono piu' pollutants, restituisco un dataframe che contiene tutti gli inquinanti e uno per ognni inquinante
   if(length(pollutant) > 1) {
-    colnames(t_aggr) <- c("AirQualityStationEoICode", "AirQualityStationName", "Date", expand.grid(pollutant, aggr_fun) %>% dplyr::arrange(.data$Var1) %>% tidyr::unite("names", .data$Var1:.data$Var2, sep = "_") %>% purrr::as_vector())
+    #colnames(t_aggr) <- c("AirQualityStationEoICode", "AirQualityStationName", "Date", expand.grid(pollutant, aggr_fun) %>% dplyr::arrange(.data$Var1) %>% tidyr::unite("names", "Var1":"Var2", sep = "_") %>% purrr::as_vector())
+    colnames(t_aggr) <- c("AirQualityStationEoICode", "AirQualityStationName", "Date", tidyr::unite(dplyr::arrange(expand.grid(pollutant, aggr_fun), .data$Var1), "names", "Var1":"Var2", sep = "_")[,1])
     output <- list()
     output$TimeAggr <- t_aggr
     output$TimeAggr_byPollutant <- data_aggr

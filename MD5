@@ -1,13 +1,13 @@
-f5ef4a696ad6eb98115dbc48df56c3db *DESCRIPTION
+6224ecdfef39f0b7a0c4615cd43cd870 *DESCRIPTION
 cb8d7612798519cc7e00b58bfefbaf63 *NAMESPACE
 84d2e1f060e34a0a5821ddcb9b7e8f6d *R/EEAaq_export.R
 b246640a96b0bee92183b065e1625741 *R/EEAaq_get_data.R
 8f7e2518e33eec8f441e5c80d39dc691 *R/EEAaq_get_stations.R
-674c6ae4fefe8fa6d74ec8c1138bfbda *R/EEAaq_idw_map.R
+bc4032b33cb01eaad59887875233d999 *R/EEAaq_idw_map.R
 94e89228cb556e1a7ae608afc7fb3e0f *R/EEAaq_import.R
-8310a8d8dbb70abde9ea7c08c98d4ba2 *R/EEAaq_map_stations.R
+30a2a0a4a8465e4281b4417d6200ae1b *R/EEAaq_map_stations.R
 547cb8d1a47ef8fdf7e4a0e17cb462b3 *R/EEAaq_summary.R
-789c8baacd3b0db540eea24ba422b0df *R/EEAaq_time_aggregate.R
+279bab9416bbe29aeffd665ca9316908 *R/EEAaq_time_aggregate.R
 99539ef0f295bab2f05ff72f4c6eab07 *R/data.R
 a7645474ca44c50d69618b25481c08a6 *R/globals.R
 a105fb0e8c7ac7465dd74d391881b7f5 *R/is_EEAaq_df.R
@@ -20,7 +20,7 @@ dc0083782462aa184eb04645fc3942a3 *man/EEAaq_idw_map.Rd
 4cbfe17fcf6fd154eb244257f9d8e335 *man/EEAaq_import.Rd
 117a76fa6f0e36e496138208e33c1fce *man/EEAaq_map_stations.Rd
 784e84454df41c8bcda16b08ec0d51e0 *man/EEAaq_summary.Rd
-3b9dcc4b40845c1b5ef96cfa6de4bb1c *man/EEAaq_time_aggregate.Rd
+67bb8c8bba72de9de991480c97b850c0 *man/EEAaq_time_aggregate.Rd
 c5fa1391a23d6b63dde3875bc74bebf3 *man/code_extr.Rd
 0c47eba2fbb62d0b3df0c9c1544cdaa8 *man/is_EEAaq_df.Rd
 048508b84326375d12ec0a36da0011ee *man/my_summarise.Rd

@@ -17,7 +17,7 @@ EEAaq_time_aggregate(
 Admissible values are 'yearly', 'monthly', 'weekly', 'daily' 'hourly'.}
 
 \item{aggr_fun}{character vector containing one or more agregation functions. Admissible values are 'mean', 'median',
-'min', 'max', 'sd', 'var', 'kurtosis', 'skewness',
+'min', 'max', 'sd', 'var',
 'quantile_pp' (where pp is a number in the range [0,1], representing the required percentile).}
 }
 \value{
