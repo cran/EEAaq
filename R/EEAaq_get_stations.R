@@ -14,10 +14,28 @@
 EEAaq_get_stations <- function(byStation = FALSE, complete = TRUE) {
 
   `%>%` <- dplyr::`%>%`
+
+
+  #Verifica connessione a internet
+  if(!curl::has_internet()) {
+    stop("Please check your internet connection. If the problem persists, please
+         contact the package maintainer.")
+  }
+
+
   #download dei metadati:
   temp <- tempfile()
-  utils::download.file("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/stations_reshaped.rds", temp, quiet = T)
-  stations <- readRDS(temp)
+  res <- curl::curl_fetch_disk("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/stations_reshaped.rds", temp)
+  if(res$status_code == 200) {
+    stations <- readRDS(temp)
+  } else {
+    stop("The internet resource is not available at the moment, try later.
+       If the problem persists, please contact the maintainer.")
+  }
+
+  #temp <- tempfile()
+  #utils::download.file("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/stations_reshaped.rds", temp, quiet = T)
+  #stations <- readRDS(temp)
 
 
   if(byStation == T) {

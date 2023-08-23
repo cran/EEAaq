@@ -105,6 +105,12 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
   `%>%` <- dplyr::`%>%`
 
 
+  #Verifica connessione a internet
+  if(!curl::has_internet()) {
+    stop("Please check your internet connection. If the problem persists, please
+         contact the package maintainer.")
+  }
+
 
 
   #Se nei dati di input sono presenti piu inquinanti, estraggo la tabella relativa all'inquinante di interesse
@@ -135,11 +141,23 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
 
   #Download dei datasets NUTS e LAU
   temp <- tempfile()
-  utils::download.file("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/NUTS.rds", temp, quiet = T)
-  NUTS <- readRDS(temp)
+  res <- curl::curl_fetch_disk("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/LAU.rds", temp)
+  if(res$status_code == 200) {
+    LAU <- readRDS(temp)
+  } else {
+    stop("The internet resource is not available at the moment, try later.
+       If the problem persists, please contact the maintainer.")
+  }
+
+
   temp <- tempfile()
-  utils::download.file("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/LAU.rds", temp, quiet = T)
-  LAU <- readRDS(temp)
+  res <- curl::curl_fetch_disk("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/NUTS.rds", temp)
+  if(res$status_code == 200) {
+    NUTS <- readRDS(temp)
+  } else {
+    stop("The internet resource is not available at the moment, try later.
+       If the problem persists, please contact the maintainer.")
+  }
   stations <- EEAaq_get_stations()
 
 
@@ -281,8 +299,8 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
           #scale_fill_stepsn(colours = c("green3", "greenyellow", "yellow", "orange", "red", "darkred"), breaks = c(0,10,20,30,40,75,100), values = scales::rescale(c(0,10,20,30,40,75,100)), limits = c(0,100), oob = scales::squish) +
           ggplot2::labs(x = "Longitude", y = "Latitude", title = paste(date)) +
           ggplot2::geom_sf(data = locations, size = .5) +
-          ggspatial::annotation_north_arrow(which_north = "true") +
-          ggspatial::annotation_scale(location="br") +
+          #ggspatial::annotation_north_arrow(which_north = "true") +
+          #ggspatial::annotation_scale(location="br") +
           ggplot2::theme_bw()
       } else if(!is.null(bounds)) {
         map <- ggplot2::ggplot() +
@@ -299,8 +317,8 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
           #scale_fill_stepsn(colours = c("green3", "greenyellow", "yellow", "orange", "red", "darkred"), breaks = c(0,10,20,30,40,75,100), values = scales::rescale(c(0,10,20,30,40,75,100)), limits = c(0,100), oob = scales::squish) +
           ggplot2::labs(x = "Longitude", y = "Latitude", title = paste(date)) +
           ggplot2::geom_sf(data = locations, size = .5) +
-          ggspatial::annotation_north_arrow(which_north = "true", height = grid::unit(.7, "cm"), width = grid::unit(.7, "cm"), style = ggspatial::north_arrow_orienteering()) +
-          ggspatial::annotation_scale(location="br") +
+          #ggspatial::annotation_north_arrow(which_north = "true", height = grid::unit(.7, "cm"), width = grid::unit(.7, "cm"), style = ggspatial::north_arrow_orienteering()) +
+          #ggspatial::annotation_scale(location="br") +
           ggplot2::theme_bw()
       }
       return(map)
@@ -369,8 +387,8 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
           #scale_fill_stepsn(colours = c("green3", "greenyellow", "yellow", "orange", "red", "darkred"), breaks = c(0,10,20,30,40,75,100), values = scales::rescale(c(0,10,20,30,40,75,100)), limits = c(0,100), oob = scales::squish) +
           ggplot2::labs(x = "Longitude", y = "Latitude", title = paste(date)) +
           ggplot2::geom_sf(data = locations, size = .5) +
-          ggspatial::annotation_north_arrow(which_north = "true", height = grid::unit(.7, "cm"), width = grid::unit(.7, "cm"), style = ggspatial::north_arrow_orienteering()) +
-          ggspatial::annotation_scale(location="br") +
+          #ggspatial::annotation_north_arrow(which_north = "true", height = grid::unit(.7, "cm"), width = grid::unit(.7, "cm"), style = ggspatial::north_arrow_orienteering()) +
+          #ggspatial::annotation_scale(location="br") +
           ggplot2::theme_bw()
       } else if(!is.null(bounds)) {
         map <- ggplot2::ggplot() +
@@ -386,8 +404,8 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, bounds_level 
           #scale_fill_stepsn(colours = c("green3", "greenyellow", "yellow", "orange", "red", "darkred"), breaks = c(0,10,20,30,40,75,100), values = scales::rescale(c(0,10,20,30,40,75,100)), limits = c(0,100), oob = scales::squish) +
           ggplot2::labs(x = "Longitude", y = "Latitude", title = paste(date)) +
           ggplot2::geom_sf(data = locations, size = .5) +
-          ggspatial::annotation_north_arrow(which_north = "true", height = grid::unit(.7, "cm"), width = grid::unit(.7, "cm"), style = ggspatial::north_arrow_orienteering()) +
-          ggspatial::annotation_scale(location="br") +
+          #ggspatial::annotation_north_arrow(which_north = "true", height = grid::unit(.7, "cm"), width = grid::unit(.7, "cm"), style = ggspatial::north_arrow_orienteering()) +
+          #ggspatial::annotation_scale(location="br") +
           ggplot2::theme_bw()
       }
       return(map)

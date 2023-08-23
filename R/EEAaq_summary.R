@@ -29,6 +29,13 @@
 EEAaq_summary <- function(data = NULL, verbose = TRUE) {
 
   `%>%` <- dplyr::`%>%`
+
+  #Verifica connessione a internet
+  if(!curl::has_internet()) {
+    stop("Please check your internet connection. If the problem persists, please
+         contact the package maintainer.")
+  }
+
   stations <- EEAaq_get_stations()
 
   if(verbose == T) {

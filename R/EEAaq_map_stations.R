@@ -43,14 +43,32 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
 
   `%>%` <- dplyr::`%>%`
 
+  #Verifica connessione a internet
+  if(!curl::has_internet()) {
+    stop("Please check your internet connection. If the problem persists, please
+         contact the package maintainer.")
+  }
+
 
   #Download dei datasets NUTS e LAU
   temp <- tempfile()
-  utils::download.file("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/NUTS.rds", temp, quiet = T)
-  NUTS <- readRDS(temp)
+  res <- curl::curl_fetch_disk("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/LAU.rds", temp)
+  if(res$status_code == 200) {
+    LAU <- readRDS(temp)
+  } else {
+    stop("The internet resource is not available at the moment, try later.
+       If the problem persists, please contact the maintainer.")
+  }
+
+
   temp <- tempfile()
-  utils::download.file("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/LAU.rds", temp, quiet = T)
-  LAU <- readRDS(temp)
+  res <- curl::curl_fetch_disk("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/NUTS.rds", temp)
+  if(res$status_code == 200) {
+    NUTS <- readRDS(temp)
+  } else {
+    stop("The internet resource is not available at the moment, try later.
+       If the problem persists, please contact the maintainer.")
+  }
   stations <- EEAaq_get_stations()
 
   #Controllo della corretta specificazione dei parametri
@@ -218,8 +236,8 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
                "FALSE" = {ggplot2::geom_sf(data = points, col = "black")}
         ) +
         ggplot2::labs(x = "Longitude", y = "Latitude") +
-        ggspatial::annotation_north_arrow(which_north = "true", height = ggplot2::unit(.7, "cm"), width = ggplot2::unit(.7, "cm")) +
-        ggspatial::annotation_scale(location="br") +
+        #ggspatial::annotation_north_arrow(which_north = "true", height = ggplot2::unit(.7, "cm"), width = ggplot2::unit(.7, "cm")) +
+        #ggspatial::annotation_scale(location="br") +
         ggplot2::theme_bw()
     } else {
       build_map <- ggplot2::ggplot() +
@@ -229,8 +247,8 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
                "FALSE" = {ggplot2::geom_sf(data = points, col = "black")}
         ) +
         ggplot2::labs(x = "Longitude", y = "Latitude") +
-        ggspatial::annotation_north_arrow(which_north = "true", height = ggplot2::unit(.7, "cm"), width = ggplot2::unit(.7, "cm")) +
-        ggspatial::annotation_scale(location="br") +
+        #ggspatial::annotation_north_arrow(which_north = "true", height = ggplot2::unit(.7, "cm"), width = ggplot2::unit(.7, "cm")) +
+        #ggspatial::annotation_scale(location="br") +
         ggplot2::theme_bw()
     }
   } else if(dynamic == T) {

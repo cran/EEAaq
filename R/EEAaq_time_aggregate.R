@@ -22,6 +22,10 @@
 EEAaq_time_aggregate <- function(data = NULL, frequency = "monthly", aggr_fun = c("mean", "min", "max")) {
 
   `%>%` <- dplyr::`%>%`
+
+
+
+
   "%notin%" <- Negate("%in%")
   #Verifica che l'oggetto dato in input per il parametro data appartenga alla classe EEAaq_df,
   #quindi che sia l'output della funzione get_EEA_AQ_data

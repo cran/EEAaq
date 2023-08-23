@@ -110,6 +110,13 @@ EEAaq_get_data <- function(zone_name = NULL, NUTS_level = NULL, pollutant = NULL
   `%>%` <- dplyr::`%>%`
 
 
+  #Verifica connessione a internet
+  if(!curl::has_internet()) {
+    stop("Please check your internet connection. If the problem persists, please
+         contact the package maintainer.")
+  }
+
+
 
 
   tictoc::tic()
@@ -131,12 +138,26 @@ EEAaq_get_data <- function(zone_name = NULL, NUTS_level = NULL, pollutant = NULL
 
 
   #Download dei dataset NUTS e LAU
+
   temp <- tempfile()
-  utils::download.file("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/LAU.rds", temp, quiet = T)
-  LAU <- readRDS(temp)
+  res <- curl::curl_fetch_disk("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/LAU.rds", temp)
+  if(res$status_code == 200) {
+    LAU <- readRDS(temp)
+  } else {
+    stop("The internet resource is not available at the moment, try later.
+       If the problem persists, please contact the package maintainer.")
+  }
+
+
   temp <- tempfile()
-  utils::download.file("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/NUTS.rds", temp, quiet = T)
-  NUTS <- readRDS(temp)
+  res <- curl::curl_fetch_disk("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/NUTS.rds", temp)
+  if(res$status_code == 200) {
+    NUTS <- readRDS(temp)
+  } else {
+    stop("The internet resource is not available at the moment, try later.
+       If the problem persists, please contact the package maintainer.")
+  }
+
   stations <- EEAaq_get_stations()
 
 
@@ -263,6 +284,14 @@ EEAaq_get_data <- function(zone_name = NULL, NUTS_level = NULL, pollutant = NULL
     start = NULL
     end = NULL
   }
+
+  temp <- tempfile()
+  res <- curl::curl_fetch_disk("https://discomap.eea.europa.eu/map/fme/AirQualityExport.htm", temp)
+  if(res$status_code != 200) {
+    stop("The internet resource is not available at the moment, try later.
+       If the problem persists, please contact the package maintainer.")
+  }
+
 
   #introduzione dell'URL uguale per qualsiasi combinazione di parametri
   intro <- "https://fme.discomap.eea.europa.eu/fmedatastreaming/AirQualityDownload/AQData_Extract.fmw?"
