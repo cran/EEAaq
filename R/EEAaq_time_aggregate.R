@@ -12,11 +12,12 @@
 #' required time aggregation.
 #' @examples
 #' \donttest{
-#' data <- EEAaq_get_data(zone_name = "Milano", NUTS_level = "LAU",
-#'   pollutant = "PM10", from = 2023, to = 2023, ID = FALSE, verbose = TRUE)
+#' data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",LAU_ISO = "IT", pollutants = "PM10",
+#' from = "2023-01-01", to = "2023-12-31",  verbose = TRUE)
 #' EEAaq_time_aggregate(data = data, frequency = "monthly", aggr_fun = c("mean", "min", "max"))
 #' EEAaq_time_aggregate(data = data, frequency = "yearly", aggr_fun = "mean")
 #' }
+#'
 #' @export
 
 EEAaq_time_aggregate <- function(data = NULL, frequency = "monthly", aggr_fun = c("mean", "min", "max")) {
@@ -32,6 +33,7 @@ EEAaq_time_aggregate <- function(data = NULL, frequency = "monthly", aggr_fun = 
   stopifnot("Data is not of class 'EEAaq_df'" = "EEAaq_df" %in% class(data) | "EEAaq_df_sfc" %in% class(data))
 
   pollutant <- attributes(data)$pollutant
+  countries <- attributes(data)$countries
 
   #Sistemo le date in modo da valutare i periodi corretti
   data <- data %>% dplyr::mutate(DatetimeBegin = lubridate::with_tz(data$DatetimeBegin, tzone = "CET"), DatetimeEnd = lubridate::with_tz(data$DatetimeBegin, tzone = "CET"))
@@ -47,9 +49,11 @@ EEAaq_time_aggregate <- function(data = NULL, frequency = "monthly", aggr_fun = 
       dplyr::relocate(.data$Date, .after = .data$AirQualityStationName)
   },
   weekly = {
-    data %>% dplyr::mutate(Year = lubridate::year(.data$DatetimeBegin), Month = lubridate::month(.data$DatetimeBegin, label = T), Week = aweek::date2week(.data$DatetimeBegin, factor = T)) %>% dplyr::group_by(.data$AirQualityStationEoICode, .data$AirQualityStationName, .data$Week) %>% dplyr::summarise(summ = my_summarise(stats::na.omit(get(pollutant)), aggr_fun)) %>%
+    data %>% dplyr::mutate(Year = lubridate::year(.data$DatetimeBegin), Month = lubridate::month(.data$DatetimeBegin, label = T), Week = lubridate::floor_date(.data$DatetimeBegin, unit = "week", week_start = 1)) %>%
+      dplyr::group_by(.data$AirQualityStationEoICode, .data$AirQualityStationName, .data$Week) %>% dplyr::summarise(summ = my_summarise(stats::na.omit(get(pollutant)), aggr_fun)) %>%
       dplyr::mutate(name = aggr_fun) %>% dplyr::ungroup() %>% tidyr::pivot_wider(names_from = "name", values_from = "summ") %>%
-      dplyr::mutate(Week = lubridate::as_date(aweek::week2date(.data$Week, week_start = 1), tz = "CET")) %>% dplyr::rename(Date = .data$Week)
+      dplyr::mutate(Week = lubridate::as_date(.data$Week)) %>% dplyr::rename(Date = .data$Week)
+
   },
   daily = {
     data %>% dplyr::mutate(Year = lubridate::year(.data$DatetimeBegin), Month = lubridate::month(.data$DatetimeBegin, label = T), Day = lubridate::day(.data$DatetimeBegin)) %>%
@@ -92,12 +96,14 @@ EEAaq_time_aggregate <- function(data = NULL, frequency = "monthly", aggr_fun = 
       attr(output$TimeAggr, "NUTS_level") <- attributes(data)$NUTS_level
       attr(output$TimeAggr,"zone_name") <- attributes(data)$zone_name
       attr(output$TimeAggr, "pollutants") <- attributes(data)$pollutants
+      attr(output$TimeAggr, "countries") <- countries
       for (i in 1:length(output$TimeAggr_byPollutant)) {
         attr(output$TimeAggr_byPollutant[[i]], "class") <- c("EEAaq_taggr_df", "tbl_df", "tbl", "data.frame")
         attr(output$TimeAggr_byPollutant[[i]], "frequency") <- frequency
         attr(output$TimeAggr_byPollutant[[i]], "NUTS_level") <- attributes(data)$NUTS_level
         attr(output$TimeAggr_byPollutant[[i]],"zone_name") <- attributes(data)$zone_name
         attr(output$TimeAggr_byPollutant[[i]], "pollutants") <- attributes(data)$pollutants
+        attr(output$TimeAggr_byPollutant[[i]], "countries") <- countries
       }
       attr(output, "class") <- c("list", "EEAaq_taggr_list")
     } else if("EEAaq_df_sfc" %in% class(data)) {
@@ -121,11 +127,15 @@ EEAaq_time_aggregate <- function(data = NULL, frequency = "monthly", aggr_fun = 
       attr(output, "NUTS_level") <- attributes(data)$NUTS_level
       attr(output,"zone_name") <- attributes(data)$zone_name
       attr(output, "pollutants") <- attributes(data)$pollutants
+      attr(output, "countries") <- countries
+
     } else if("EEAaq_df_sfc" %in% class(data)) {
       attr(output, "class") <- c("EEAaq_taggr_df_sfc", "tbl_df", "tbl", "data.frame")
       attr(output, "frequency") <- frequency
       attr(output,"zone_geometry") <- attributes(data)$zone_geometry
       attr(output, "pollutants") <- pollutant
+
+
     }
   }
   attributes(output)
@@ -153,5 +163,3 @@ my_summarise <- function(data, fun_aggr) {
     unlist(lapply(fun_aggr, do.call, args = list(data)))
   }
 }
-
-

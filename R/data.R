@@ -1,11 +1,9 @@
-
-
 #' Dataset containing information about the available pollutants
 #'
 #' This dataset belongs to the European Environment Agency institution. Contains short information about the available
 #' pollutants.
 #'
-#' @format A data frame with 650 rows and 4 variables:
+#' @format A data frame with 658 rows and 4 variables:
 #' \describe{
 #'   \item{Code}{Unique pollutant code identifier}
 #'   \item{Notation}{pollutant's short name}
@@ -13,9 +11,44 @@
 #'   \item{RecommendedUnit}{Measurement unit, recommended for the pollutant}
 #' }
 #' @source <http://dd.eionet.europa.eu/vocabulary/aq/pollutant/view>
-"pollutants"
 
 
+
+
+
+
+#' Dataset containing information about the available Territorial units for statistics (NUTS)
+#' @format A data frame with 1793 rows and 9 variables:
+#' \describe{
+#' \item{NUTS_ID}{NUTS ID code, consisting of country code and numbers (1 for NUTS 1, 2 for NUTS 2 and 3 for NUTS 3)}
+#' \item{LEVL_CODE}{NUTS level code: 0 (national level), 1 (major socio-economic regions), 2 (basic regions for the application of regional policies) or 3 (small regions)}
+#' \item{CNTR_CODE}{Country code: two-letter ISO code (ISO 3166 alpha-2)}
+#' \item{NAME_LATN}{NUTS name in local language, transliterated to Latin script}
+#' \item{NUTS_NAME}{NUTS name in local language, in local script}
+#' \item{MOUNT_TYPE}{Mountain typology for NUTS  regions}
+#' \item{URBN_TYPE}{Urban-rural typology for NUTS  regions}
+#' \item{COAST_TYPE}{Coastal typology for NUTS  regions}
+#' \item{geometry}{geospatial information}
+#' }
+#' @source <https://ec.europa.eu/eurostat/web/gisco/geodata/statistical-units/territorial-units-statistics>
+
+
+
+#' Dataset containing information about European administrative boundaries down to commune level version
+#' @format A data frame with 1793 rows and 9 variables:
+#' \describe{
+#' \item{GISCO_ID}{unique identifier consisting of the Country code and LAU code}
+#' \item{ISO}{Country code: two-letter ISO code (ISO 3166 alpha-2)}
+#' \item{LAU_ID}{LAU system identification code of the area at LAU level in which the measuring station is located}
+#' \item{LAU_NAME}{Name in Latin characters of the area at the level LAU where the measuring station is located}
+#' \item{POP_2021}{Total resident population for the reference year}
+#' \item{POP_DENS_2}{Population density}
+#' \item{AREA_KM2}{area of the polygons in LAEA spatial reference (EPSG:3035) of the original 100K scale data}
+#' \item{YEAR}{the reference year for the population value}
+#' \item{NUTS3_ID}{NUTS system identification code of the area at NUTS 3 level in which the measuring station is located}
+#' \item{Lau_geometry}{geospatial information}
+#' }
+#' @source <https://ec.europa.eu/eurostat/web/nuts/local-administrative-units>
 
 
 
@@ -23,7 +56,7 @@
 #'
 #' This dataset belongs to the European Environment Agency. Assessment methods meta-data (data set D) describe technical facilities used for the measurement
 #' of one pollutant or one of its compounds. It contains information about the measurement stations mapped by the EEA
-#' in Europe. This dataset may be out of date, and for this reason the use of the \code{\link{EEAaq_get_stations}} function
+#' in Europe. This dataset may be out of date, and for this reason the use of the \code{EEAaq_get_stations} function
 #' is suggested.
 #' For further information see <https://cmshare.eea.europa.eu/s/8LGQLRGX8YEiSg9/download>
 #'
@@ -37,7 +70,7 @@
 #'   \item{AirQualityStationNatCode}{National code of air quality measurement station, given by data provider}
 #'   \item{AirQualityStationName}{Name of air quality measurement station (as in AirBase), given by data provider}
 #'   \item{AirPollutant}{Air polluting substance, level of which is measured and reported to the EEA.
-#'   See \code{\link{pollutants}} for further information}
+#'   See \code{pollutants} for further information}
 #'   \item{OperationalActivityBegin}{Start time of the sampling point}
 #'   \item{OperationalActivityEnd}{End time of the sampling point}
 #'   \item{SamplingPointStatus}{Categorical variable which assumes two possible values:
@@ -56,7 +89,9 @@
 #'   \item{NUTS2_ID}{NUTS system identification code of the area at NUTS 2 level in which the measuring station is located}
 #'   \item{NUTS3}{Name in Latin characters of the area at the level NUTS 3 where the measuring station is located}
 #'   \item{NUTS3_ID}{NUTS system identification code of the area at NUTS 3 level in which the measuring station is located}
-#'   \item{LAU}{Name in Latin characters of the area at the level LAU where the measuring station is located}
+#'   \item{NUTS0}{Name in Latin characters of the area at the level NUTS 0 where the measuring station is located}
+#'   \item{NUTS0_ID}{NUTS system identification code of the area at NUTS 0 level in which the measuring station is located}
+#'   \item{LAU_NAME}{Name in Latin characters of the area at the level LAU where the measuring station is located}
 #'   \item{LAU_ID}{LAU system identification code of the area at LAU level in which the measuring station is located}
 #'   \item{AirQualityStationArea}{Area of Air Quality Measurement Station classification -
 #'   information whether it is measuring air pollution in urban, suburban, rural (etc.) environment}
@@ -105,7 +140,7 @@
 #'   \item{OtherMeasurementMethod}{Other Measurement Method}
 #'   \item{MeasurementEquipment}{Information on equipment used for measuring air polluting substances}
 #'   \item{OtherMeasurementEquipment}{Other Measurement Equipment}
-#'   \item{SamplingMethod}{Information on the sampling methods used for Active or passive sampling measurement types (i.e.Passive adsorbent, Low Volume Sampling withautomatic filter change…)}
+#'   \item{SamplingMethod}{Information on the sampling methods used for Active or passive sampling measurement types (i.e.Passive adsorbent, Low Volume Sampling withautomatic filter change)}
 #'   \item{OtherSamplingMethod}{Other Sampling Method}
 #'   \item{AnalyticalTechnique}{Information on analytical technique}
 #'   \item{OtherAnalyticalTechnique}{Other Analytical Technique}
@@ -124,6 +159,4 @@
 #'   \item{Imported}{Date and time of source data import into EEA's databases}
 #' }
 #' @source <https://discomap.eea.europa.eu/App/AQViewer/index.html?fqn=Airquality_Dissem.b2g.Measurements>
-"stations"
-
 

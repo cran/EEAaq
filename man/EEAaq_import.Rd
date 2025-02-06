@@ -22,13 +22,14 @@ associated shapefile, \code{EEAaq_read} imports the \code{EEAaq_df} class object
 \examples{
 \donttest{
 #Download a dataset with the function EEAaq_get_data, which generate an EEAaq_df object.
-data <- EEAaq_get_data(zone_name = "Milano", NUTS_level = "LAU", pollutant = "PM10",
-  from = 2021, to = 2021, verbose = TRUE)
+data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",LAU_ISO = "IT",
+pollutants = "PM10", from = "2023-01-01", to = "2023-05-31",  verbose = TRUE)
+
 temp <- tempdir()
 filepath <- paste0(temp, "/data.csv")
 #Export the dataset and the associated shape
 EEAaq_export(data = data, filepath = filepath, format = "csv", shape = TRUE)
 #Import the EEAaq_df object saved in the previous code line
-EEAaq_import(file_data = filepath, file_shape = paste0(temp, "/data.shp"))
-}
+EEAaq_import(file_data = filepath, file_shape = paste0(temp, "/data.shp"))}
+
 }

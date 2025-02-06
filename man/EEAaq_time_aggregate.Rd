@@ -30,9 +30,10 @@ based on the specified \code{frequency} and the aggregation functions \code{aggr
 }
 \examples{
 \donttest{
-data <- EEAaq_get_data(zone_name = "Milano", NUTS_level = "LAU",
-  pollutant = "PM10", from = 2023, to = 2023, ID = FALSE, verbose = TRUE)
+data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",LAU_ISO = "IT", pollutants = "PM10",
+from = "2023-01-01", to = "2023-12-31",  verbose = TRUE)
 EEAaq_time_aggregate(data = data, frequency = "monthly", aggr_fun = c("mean", "min", "max"))
 EEAaq_time_aggregate(data = data, frequency = "yearly", aggr_fun = "mean")
 }
+
 }

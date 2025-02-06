@@ -2,6 +2,7 @@
 
 export(EEAaq_export)
 export(EEAaq_get_data)
+export(EEAaq_get_dataframe)
 export(EEAaq_get_stations)
 export(EEAaq_idw_map)
 export(EEAaq_import)

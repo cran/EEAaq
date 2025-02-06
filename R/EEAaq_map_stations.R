@@ -22,24 +22,25 @@
 #' the specified pollutants.
 #' @examples
 #' \donttest{
-#' #Using as example PM data in Lombardia (Italy) during the whole 2022,
-#' #it's possible to map the stations in two ways.
-#' #First of all specifying the zone information:
-#' EEAaq_map_stations(pollutant = c("PM10", "PM2.5"), zone_name = "Lombardia",
-#'                    NUTS_level = "NUTS2", ID = FALSE, color = FALSE)
+#' # Using as example PM data in Lombardia (Italy) during the whole 2022,
+#' # it's possible to map the stations in two ways.
+#' # First of all specifying the zone information:
+#' EEAaq_map_stations(pollutant = c("PM10", "PM2.5"),
+#' zone_name = "Lombardia",NUTS_level = "NUTS2", ID = FALSE, color = FALSE)
 #' #In this case each point have the same color.
 #'
-#' #Alternatively, it is possible to use the data already downloaded in the parameter data,
-#' #coloring the points based on the pollutants the respective station detects.
-#' data <- EEAaq_get_data(zone_name = "Milano", NUTS_level = "LAU",
-#'   pollutant = "PM10", from = 2023, to = 2023, ID = FALSE, verbose = TRUE)
+#' # Alternatively, it is possible to use the data already downloaded in the parameter data,
+#' # coloring the points based on the pollutants the respective station detects.
+#' data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",LAU_ISO = "IT",
+#' pollutants = "PM10", from = "2023-01-01", to = "2023-05-31",  verbose = TRUE)
 #' EEAaq_map_stations(data = data, color = TRUE)
 #' }
+#'
 #' @export
 
 EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
-                                zone_name = NULL, NUTS_level = NULL, ID = FALSE,
-                                bounds_level = NULL, color = TRUE, dynamic = FALSE) {
+                               zone_name = NULL, NUTS_level = NULL, ID = FALSE,
+                               bounds_level = NULL, color = TRUE, dynamic = FALSE) {
 
   `%>%` <- dplyr::`%>%`
 
@@ -50,26 +51,14 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
   }
 
 
-  #Download dei datasets NUTS e LAU
-  temp <- tempfile()
-  res <- curl::curl_fetch_disk("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/LAU.rds", temp)
-  if(res$status_code == 200) {
-    LAU <- readRDS(temp)
-  } else {
-    stop("The internet resource is not available at the moment, try later.
-       If the problem persists, please contact the maintainer.")
-  }
+  #Download dei datasets necessari
+  LAU <- EEAaq_get_dataframe(dataframe = "LAU")
+  LAU <-  LAU  %>% dplyr::rename(geometry = .data$Lau_geometry)
+  NUTS <- EEAaq_get_dataframe(dataframe = "NUTS")
+  stations <- EEAaq_get_dataframe(dataframe = "stations")
 
 
-  temp <- tempfile()
-  res <- curl::curl_fetch_disk("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/NUTS.rds", temp)
-  if(res$status_code == 200) {
-    NUTS <- readRDS(temp)
-  } else {
-    stop("The internet resource is not available at the moment, try later.
-       If the problem persists, please contact the maintainer.")
-  }
-  stations <- EEAaq_get_stations()
+
 
   #Controllo della corretta specificazione dei parametri
   if(is.null(data) & is.null(zone_name)) {
@@ -85,13 +74,17 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
     zone_name = attributes(data)$zone_name
     NUTS_level = attributes(data)$NUTS_level
     pollutant = attributes(data)$pollutants
+    countries = attributes(data)$countries
   } else if(!is.null(data) & "EEAaq_df_sfc" %in% class(data)) {
     mappa <- attributes(data)$zone_geometry
     NUTS_level = "polygon"
     pollutant = attributes(data)$pollutants
+
   }
 
-  #Converto il parametro zone_name, nel caso vengano indicati i nomi completi delle zone, nei rispettivi ID
+  #gestione query senza data
+
+  #Converto il parametro zone_name, nel caso vengano indicati i nomi completi delle zone, nei rispettivi LAU_ID E NUTS_Id
   if(ID == F & NUTS_level == "LAU") {
     zone_name <- LAU %>% sf::st_drop_geometry() %>% dplyr::filter(.data$LAU_NAME %in% zone_name) %>% dplyr::pull(.data$LAU_ID)
   } else if(ID == F & NUTS_level != "NUTS0" & NUTS_level != "polygon") {
@@ -99,7 +92,7 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
   }
 
 
-  #NUTS0:
+  #NUTS0:  NUTS_ID, ISO
   if(is.null(data)) {
     if(NUTS_level == "NUTS0" & ID == F) {
       if(length(zone_name) == 1) {
@@ -142,10 +135,27 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
     }
   }
 
+  #gestisco il dataset fornito da utente che puo contenre anche LAU_NAME e LATN_NAME
+  if (!is.null(data)) {
+    if (NUTS_level == "LAU") {
+      if (all(zone_name  %in% LAU$LAU_ID)) {
+        invisible()
+      } else if (all(zone_name  %in% LAU$NAME)) {
+        zone_name <- dplyr::filter(LAU, .data$LAU_NAME %in% zone_name) %>% dplyr::pull(.data$LAU_ID)
+      }
+    } else if (NUTS_level != "polygon") {
+      if (all(zone_name %in% NUTS$NUTS_ID  )) {
+        invisible()
+      } else if (all(zone_name %in% NUTS$NAME_LATN  )) {
+        zone_name <- dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(NUTS_level) & .data$NAME_LATN %in% zone_name) %>% dplyr::pull(.data$NUTS_ID)
+      }
+    }
+  }
 
+  # gestione quando  data e presente
   #Identifico i bordi piu' esterni da rappresentare in base ai parametri zone_name e NUTS_level
   if(NUTS_level == "LAU") {
-    mappa <- dplyr::filter(LAU, .data$LAU_ID %in% zone_name)
+    mappa <- dplyr::filter(LAU, .data$LAU_ID %in% zone_name & .data$ISO %in% countries)
   } else if(NUTS_level != "polygon") {
     mappa <- dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% zone_name)
   }
@@ -176,23 +186,27 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
     } else {bounds <- NULL}
   }
 
+  print(mappa)
+
+
+
 
   #Filtro le centraline da rappresentare in base agli inquinanti specificati
   if(!is.null(pollutant) & is.null(data)) {
     points <- stations %>% dplyr::filter(.data$AirPollutant %in% pollutant) %>%
       dplyr::distinct(.data$Country, .data$ISO, .data$AirQualityStationEoICode, .data$AirQualityStationNatCode,
                       .data$AirQualityStationName, .data$Longitude, .data$Latitude, .data$Altitude, .data$NUTS1,
-                      .data$NUTS1_ID, .data$NUTS2, .data$NUTS2_ID, .data$NUTS3, .data$NUTS3_ID, .data$LAU, .data$LAU_ID, .data$AirPollutant)
+                      .data$NUTS1_ID, .data$NUTS2, .data$NUTS2_ID, .data$NUTS3, .data$NUTS3_ID, .data$LAU_NAME, .data$LAU_ID, .data$AirPollutant)
   } else if(is.null(pollutant) & is.null(data)){
     points <- stations %>%
       dplyr::distinct(.data$Country, .data$ISO, .data$AirQualityStationEoICode, .data$AirQualityStationNatCode,
                       .data$AirQualityStationName, .data$Longitude, .data$Latitude, .data$Altitude, .data$NUTS1,
-                      .data$NUTS1_ID, .data$NUTS2, .data$NUTS2_ID, .data$NUTS3, .data$NUTS3_ID, .data$LAU, .data$LAU_ID, .data$AirPollutant)
+                      .data$NUTS1_ID, .data$NUTS2, .data$NUTS2_ID, .data$NUTS3, .data$NUTS3_ID, .data$LAU_NAME, .data$LAU_ID, .data$AirPollutant)
   } else if(!is.null(data)) {
     points <- stations %>% dplyr::filter(.data$AirQualityStationEoICode %in% unique(data$AirQualityStationEoICode)) %>% dplyr::filter(.data$AirPollutant %in% pollutant) %>%
       dplyr::distinct(.data$Country, .data$ISO, .data$AirQualityStationEoICode, .data$AirQualityStationNatCode,
                       .data$AirQualityStationName, .data$Longitude, .data$Latitude, .data$Altitude, .data$NUTS1,
-                      .data$NUTS1_ID, .data$NUTS2, .data$NUTS2_ID, .data$NUTS3, .data$NUTS3_ID, .data$LAU, .data$LAU_ID, .data$AirPollutant)
+                      .data$NUTS1_ID, .data$NUTS2, .data$NUTS2_ID, .data$NUTS3, .data$NUTS3_ID, .data$LAU_NAME, .data$LAU_ID, .data$AirPollutant)
   }
 
   #Se la stessa centralina rileva piu' inquinanti, le raggruppo in un unico punto
@@ -216,6 +230,7 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
     }
   }
 
+
   #Errore nel caso non ci siano centraline per i parametri specificati:
   if(nrow(points) == 0){
     stop("There is no station available in the specified zone for these pollutants")
@@ -223,7 +238,7 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
 
   #Aggiungo le geometrie dei punti
   points <-  sf::st_as_sf(stats::na.omit(points), coords = c("Longitude", "Latitude"), crs = 4326)
-
+  cat("points",colnames(points), "n")
 
   #Costruzione della mappa da rappresentare
   if(dynamic == F) {
@@ -261,8 +276,8 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
         leaflet::addMapPane("polygons", zIndex = 410) %>%
         leaflet::addMapPane("circles", zIndex = 420) %>%
         leaflet::addPolygons(color = "black",  weight = 2.5, smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                    highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
-                    options = leaflet::pathOptions(pane = "polygons"))
+                             highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
+                             options = leaflet::pathOptions(pane = "polygons"))
       if(!is.null(bounds_level)) {
         if(bounds_level == "NUTS0") {
           ind <- sf::st_intersects(NUTS, mappa, sparse = T)
@@ -274,24 +289,24 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
           ind <- sf::st_intersects(LAU, mappa, sparse = T)
           mappa_lau <- LAU[as.logical(apply(as.matrix(ind), 1, sum)),]
           build_map <- build_map %>% leaflet::addPolygons(data = mappa_nuts0,color = "black",  weight = 2, smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts0$NAME_LATN, group = "NUTS 0",
-                                                 options = leaflet::pathOptions(pane = "polygons")) %>%
+                                                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts0$NAME_LATN, group = "NUTS 0",
+                                                          options = leaflet::pathOptions(pane = "polygons")) %>%
             leaflet::addPolygons(data = mappa_nuts1, group = "NUTS 1", color = "black",  weight = 1.5,
-                        smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
-                        popup = mappa_nuts1$NAME_LATN, options = leaflet::pathOptions(pane = "polygons")) %>%
+                                 smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
+                                 popup = mappa_nuts1$NAME_LATN, options = leaflet::pathOptions(pane = "polygons")) %>%
             leaflet::addPolygons(data = mappa_nuts2, group = "NUTS 2", color = "black",  weight = 1.2,
-                        smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts2$NAME_LATN,
-                        options = leaflet::pathOptions(pane = "polygons")) %>%
+                                 smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts2$NAME_LATN,
+                                 options = leaflet::pathOptions(pane = "polygons")) %>%
             leaflet::addPolygons(data = mappa_nuts3, group = "NUTS 3", color = "black",  weight = .5,
-                        smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
-                        options = leaflet::pathOptions(pane = "polygons")) %>%
+                                 smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
+                                 options = leaflet::pathOptions(pane = "polygons")) %>%
             leaflet::addPolygons(data = mappa_lau, group = "LAU", color = "black",  weight = .2,
-                        smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
-                        options = leaflet::pathOptions(pane = "polygons"))
+                                 smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
+                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
+                                 options = leaflet::pathOptions(pane = "polygons"))
         } else if(bounds_level == "NUTS1") {
           ind <- sf::st_intersects(NUTS, mappa, sparse = T)
           mappa_nuts <- NUTS[as.logical(apply(as.matrix(ind), 1, sum)),]
@@ -301,21 +316,21 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
           ind <- sf::st_intersects(LAU, mappa, sparse = T)
           mappa_lau <- LAU[as.logical(apply(as.matrix(ind), 1, sum)),]
           build_map <- build_map %>% leaflet::addPolygons(data = mappa_nuts1, group = "NUTS 1", color = "black",  weight = 1.5,
-                                                 smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
-                                                 popup = mappa_nuts1$NAME_LATN, options = leaflet::pathOptions(pane = "polygons")) %>%
+                                                          smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                                                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
+                                                          popup = mappa_nuts1$NAME_LATN, options = leaflet::pathOptions(pane = "polygons")) %>%
             leaflet::addPolygons(data = mappa_nuts2, group = "NUTS 2", color = "black",  weight = 1.2,
-                        smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts2$NAME_LATN,
-                        options = leaflet::pathOptions(pane = "polygons")) %>%
+                                 smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts2$NAME_LATN,
+                                 options = leaflet::pathOptions(pane = "polygons")) %>%
             leaflet::addPolygons(data = mappa_nuts3, group = "NUTS 3", color = "black",  weight = .5,
-                        smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
-                        options = leaflet::pathOptions(pane = "polygons")) %>%
+                                 smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
+                                 options = leaflet::pathOptions(pane = "polygons")) %>%
             leaflet::addPolygons(data = mappa_lau, group = "LAU", color = "black",  weight = .2,
-                        smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
-                        options = leaflet::pathOptions(pane = "polygons"))
+                                 smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
+                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
+                                 options = leaflet::pathOptions(pane = "polygons"))
         } else if(bounds_level == "NUTS2") {
           ind <- sf::st_intersects(NUTS, mappa, sparse = T)
           mappa_nuts <- NUTS[as.logical(apply(as.matrix(ind), 1, sum)),]
@@ -324,17 +339,17 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
           ind <- sf::st_intersects(LAU, mappa, sparse = T)
           mappa_lau <- LAU[as.logical(apply(as.matrix(ind), 1, sum)),]
           build_map <- build_map %>% leaflet::addPolygons(data = mappa_nuts2, group = "NUTS 2", color = "black",  weight = 1.2,
-                                                 smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts2$NAME_LATN,
-                                                 options = leaflet::pathOptions(pane = "polygons")) %>%
+                                                          smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                                                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts2$NAME_LATN,
+                                                          options = leaflet::pathOptions(pane = "polygons")) %>%
             leaflet::addPolygons(data = mappa_nuts3, group = "NUTS 3", color = "black",  weight = .5,
-                        smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
-                        options = leaflet::pathOptions(pane = "polygons")) %>%
+                                 smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
+                                 options = leaflet::pathOptions(pane = "polygons")) %>%
             leaflet::addPolygons(data = mappa_lau, group = "LAU", color = "black",  weight = .2,
-                        smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
-                        options = leaflet::pathOptions(pane = "polygons"))
+                                 smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
+                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
+                                 options = leaflet::pathOptions(pane = "polygons"))
         } else if(bounds_level == "NUTS3") {
           ind <- sf::st_intersects(NUTS, mappa, sparse = T)
           mappa_nuts <- NUTS[as.logical(apply(as.matrix(ind), 1, sum)),]
@@ -342,20 +357,20 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
           ind <- sf::st_intersects(LAU, mappa, sparse = T)
           mappa_lau <- LAU[as.logical(apply(as.matrix(ind), 1, sum)),]
           build_map <- build_map %>% leaflet::addPolygons(data = mappa_nuts3, group = "NUTS 3", color = "black",  weight = .5,
-                                                 smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
-                                                 options = leaflet::pathOptions(pane = "polygons")) %>%
+                                                          smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                                                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
+                                                          options = leaflet::pathOptions(pane = "polygons")) %>%
             leaflet::addPolygons(data = mappa_lau, group = "LAU", color = "black",  weight = .2,
-                        smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
-                        options = leaflet::pathOptions(pane = "polygons"))
+                                 smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
+                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
+                                 options = leaflet::pathOptions(pane = "polygons"))
         } else if(bounds_level == "LAU"){
           ind <- sf::st_intersects(LAU, mappa, sparse = T)
           mappa_lau <- LAU[as.logical(apply(as.matrix(ind), 1, sum)),]
           build_map <- build_map %>% leaflet::addPolygons(data = mappa_lau, group = "LAU", color = "black",  weight = .2,
-                                                 smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
-                                                 options = leaflet::pathOptions(pane = "polygons"))
+                                                          smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
+                                                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
+                                                          options = leaflet::pathOptions(pane = "polygons"))
         }
         lays <- function(x) {
           vec <- c("NUTS 0", "NUTS 1", "NUTS 2", "NUTS 3", "LAU")
@@ -364,11 +379,11 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
           return(res)
         }
         build_map <- build_map %>% leaflet::addLayersControl(baseGroups = c("Esri.WorldGrayCanvas", "Esri.WorldStreetMap", "Esri.WorldTopoMap","Esri.WorldImagery"),
-                                                    position = "topleft" , overlayGroups = lays(bounds_level), options = leaflet::layersControlOptions(collapsed = TRUE))
+                                                             position = "topleft" , overlayGroups = lays(bounds_level), options = leaflet::layersControlOptions(collapsed = TRUE))
 
       } else {
         build_map <- build_map %>% leaflet::addLayersControl(baseGroups = c("Esri.WorldGrayCanvas", "Esri.WorldStreetMap", "Esri.WorldTopoMap","Esri.WorldImagery"),
-                                                    position = "topleft", options = leaflet::layersControlOptions(collapsed = TRUE))
+                                                             position = "topleft", options = leaflet::layersControlOptions(collapsed = TRUE))
       }
 
     } else if(NUTS_level != "polygon") {
@@ -380,8 +395,8 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
         leaflet::addMapPane("polygons", zIndex = 410) %>%
         leaflet::addMapPane("circles", zIndex = 420) %>%
         leaflet::addPolygons(color = "black", group = ifelse(NUTS_level != "LAU", paste("NUTS", code_extr(NUTS_level)), "LAU"),  weight = 2.5, smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                    highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
-                    options = leaflet::pathOptions(pane = "polygons"))
+                             highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
+                             options = leaflet::pathOptions(pane = "polygons"))
 
       if(NUTS_level == "NUTS0") {
         mappa_nuts1 <- dplyr::filter(NUTS, .data$LEVL_CODE == 1 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
@@ -390,83 +405,79 @@ EEAaq_map_stations <- function(data = NULL, pollutant = NULL,
         NUTS_LAU <- sf::st_join(dplyr::filter(LAU, .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
         mappa_lau <- dplyr::filter(NUTS_LAU, .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
         build_map <- leaflet::addPolygons(map = build_map, data = mappa_nuts1, group = "NUTS 1", color = "black",  weight = 1.5,
-                                 smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
-                                 popup = mappa_nuts1$NAME_LATN, options = leaflet::pathOptions(pane = "polygons")) %>%
+                                          smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
+                                          popup = mappa_nuts1$NAME_LATN, options = leaflet::pathOptions(pane = "polygons")) %>%
           leaflet::addPolygons(data = mappa_nuts2, group = "NUTS 2", color = "black",  weight = 1.2,
-                      smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                      highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts2$NAME_LATN,
-                      options = leaflet::pathOptions(pane = "polygons")) %>%
+                               smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                               highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts2$NAME_LATN,
+                               options = leaflet::pathOptions(pane = "polygons")) %>%
           leaflet::addPolygons(data = mappa_nuts3, group = "NUTS 3", color = "black",  weight = .5,
-                      smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                      highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
-                      options = leaflet::pathOptions(pane = "polygons")) %>%
+                               smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                               highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
+                               options = leaflet::pathOptions(pane = "polygons")) %>%
           leaflet::addPolygons(data = mappa_lau, group = "LAU", color = "black",  weight = .2,
-                      smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                      highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
-                      options = leaflet::pathOptions(pane = "polygons")) %>%
+                               smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
+                               highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
+                               options = leaflet::pathOptions(pane = "polygons")) %>%
           leaflet::addLayersControl(baseGroups = c("Esri.WorldGrayCanvas", "Esri.WorldStreetMap", "Esri.WorldTopoMap","Esri.WorldImagery"),
-                           position = "topleft" , overlayGroups = c("NUTS 0", "NUTS 1", "NUTS 2", "NUTS 3", "LAU"), options = leaflet::layersControlOptions(collapsed = TRUE))
+                                    position = "topleft" , overlayGroups = c("NUTS 0", "NUTS 1", "NUTS 2", "NUTS 3", "LAU"), options = leaflet::layersControlOptions(collapsed = TRUE))
       } else if(NUTS_level == "NUTS1") {
         mappa_nuts2 <- dplyr::filter(NUTS, .data$LEVL_CODE == 2 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
         mappa_nuts3 <- dplyr::filter(NUTS, .data$LEVL_CODE == 3 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
         NUTS_LAU <- sf::st_join(dplyr::filter(LAU, .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
         mappa_lau <- dplyr::filter(NUTS_LAU, .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
         build_map <- leaflet::addPolygons(map = build_map, data = mappa_nuts2, group = "NUTS 2", color = "black",  weight = 1.2,
-                                 smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts2$NAME_LATN,
-                                 options = leaflet::pathOptions(pane = "polygons")) %>%
+                                          smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts2$NAME_LATN,
+                                          options = leaflet::pathOptions(pane = "polygons")) %>%
           leaflet::addPolygons(data = mappa_nuts3, group = "NUTS 3", color = "black",  weight = .5,
-                      smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                      highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
-                      options = leaflet::pathOptions(pane = "polygons")) %>%
+                               smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                               highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
+                               options = leaflet::pathOptions(pane = "polygons")) %>%
           leaflet::addPolygons(data = mappa_lau, group = "LAU", color = "black",  weight = .2,
-                      smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                      highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
-                      options = leaflet::pathOptions(pane = "polygons")) %>%
+                               smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
+                               highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
+                               options = leaflet::pathOptions(pane = "polygons")) %>%
           leaflet::addLayersControl(baseGroups = c("Esri.WorldGrayCanvas", "Esri.WorldStreetMap", "Esri.WorldTopoMap","Esri.WorldImagery"),
-                           position = "topleft" , overlayGroups = c("NUTS 1", "NUTS 2", "NUTS 3", "LAU"), options = leaflet::layersControlOptions(collapsed = TRUE))
+                                    position = "topleft" , overlayGroups = c("NUTS 1", "NUTS 2", "NUTS 3", "LAU"), options = leaflet::layersControlOptions(collapsed = TRUE))
       } else if(NUTS_level == "NUTS2") {
         mappa_nuts3 <- dplyr::filter(NUTS, .data$LEVL_CODE == 3 & substr(.data$NUTS_ID,1,code_extr(NUTS_level)+2) %in% mappa$NUTS_ID)
         NUTS_LAU <- sf::st_join(dplyr::filter(LAU, .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
         mappa_lau <- dplyr::filter(NUTS_LAU, .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
         build_map <- leaflet::addPolygons(map = build_map, data = mappa_nuts3, group = "NUTS 3", color = "black",  weight = 1,
-                                 smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
-                                 options = leaflet::pathOptions(pane = "polygons")) %>%
+                                          smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
+                                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
+                                          options = leaflet::pathOptions(pane = "polygons")) %>%
           leaflet::addPolygons(data = mappa_lau, group = "LAU", color = "black",  weight = .5,
-                      smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                      highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
-                      options = leaflet::pathOptions(pane = "polygons")) %>%
+                               smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
+                               highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
+                               options = leaflet::pathOptions(pane = "polygons")) %>%
           leaflet::addLayersControl(baseGroups = c("Esri.WorldGrayCanvas", "Esri.WorldStreetMap", "Esri.WorldTopoMap","Esri.WorldImagery"),
-                           position = "topleft" , overlayGroups = c("NUTS 2", "NUTS 3", "LAU"), options = leaflet::layersControlOptions(collapsed = TRUE))
+                                    position = "topleft" , overlayGroups = c("NUTS 2", "NUTS 3", "LAU"), options = leaflet::layersControlOptions(collapsed = TRUE))
       } else if(NUTS_level == "NUTS3") {
         NUTS_LAU <- sf::st_join(dplyr::filter(LAU, .data$CNTR_CODE %in% mappa$CNTR_CODE), dplyr::filter(NUTS, .data$LEVL_CODE == code_extr(NUTS_level) & .data$CNTR_CODE == mappa$CNTR_CODE), largest = T)
         mappa_lau <- dplyr::filter(NUTS_LAU, .data$LEVL_CODE == code_extr(NUTS_level) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
         build_map <- leaflet::addPolygons(map = build_map, data = mappa_lau, group = "LAU", color = "black",  weight = .5,
-                                 smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                                 highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
-                                 options = leaflet::pathOptions(pane = "polygons")) %>%
+                                          smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
+                                          highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
+                                          options = leaflet::pathOptions(pane = "polygons")) %>%
           leaflet::addLayersControl(baseGroups = c("Esri.WorldGrayCanvas", "Esri.WorldStreetMap", "Esri.WorldTopoMap","Esri.WorldImagery"),
-                           position = "topleft" , overlayGroups = c("NUTS 3", "LAU"), options = leaflet::layersControlOptions(collapsed = TRUE))
+                                    position = "topleft" , overlayGroups = c("NUTS 3", "LAU"), options = leaflet::layersControlOptions(collapsed = TRUE))
       } else if(NUTS_level == "LAU") {
         build_map <- leaflet::addLayersControl(map = build_map, baseGroups = c("Esri.WorldGrayCanvas", "Esri.WorldStreetMap", "Esri.WorldTopoMap","Esri.WorldImagery"),
-                                      position = "topleft" , overlayGroups = c("LAU"), options = leaflet::layersControlOptions(collapsed = TRUE))
+                                               position = "topleft" , overlayGroups = c("LAU"), options = leaflet::layersControlOptions(collapsed = TRUE))
       }
 
 
     }
     build_map <- leaflet::addCircleMarkers(map = build_map, data = points,  label = ~AirQualityStationEoICode,  fillColor = switch(as.character(color), "TRUE" = {~mypal(points$AirPollutant)}, "FALSE" = {"black"}), fillOpacity = 1, radius = 4, stroke = F,
                                            popup = paste("Air Quality Station EoI Code:", points$AirQualityStationEoICode, "<br>", "Air Quality Station National Code:", points$AirQualityStationNatCode, "<br>",  "Air Quality Station Name:", points$AirQualityStationName,"<br>","Country:", points$ISO, "<br>","NUTS 1:", points$NUTS1,
-                                                         "<br>", "NUTS 2:", points$NUTS2, "<br>", "NUTS 3:", points$NUTS3, "<br>", "LAU:", points$LAU),
+                                                         "<br>", "NUTS 2:", points$NUTS2, "<br>", "NUTS 3:", points$NUTS3, "<br>", "LAU:", points$LAU_NAME),
                                            labelOptions = leaflet::labelOptions(bringToFront = T), options = leaflet::pathOptions(pane = "circles"))
     build_map <- switch(as.character(color), "TRUE" = {leaflet::addLegend(map = build_map, position = "topright", pal = mypal, data = points, values = points$AirPollutant)}, "FALSE" = {build_map})
   }
   return(build_map)
 }
-
-
-
-
 
 

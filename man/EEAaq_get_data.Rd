@@ -7,10 +7,10 @@
 EEAaq_get_data(
   zone_name = NULL,
   NUTS_level = NULL,
-  pollutant = NULL,
+  LAU_ISO = NULL,
+  pollutants = NULL,
   from = NULL,
   to = NULL,
-  ID = FALSE,
   quadrant = NULL,
   polygon = NULL,
   verbose = TRUE
@@ -24,7 +24,9 @@ See \emph{Details}.}
 Allowed values are 'NUTS0', 'NUTS1', 'NUTS2', 'NUTS3', 'LAU'.
 For further information see \emph{Details}.}
 
-\item{pollutant}{the pollutants for which to download data. It may be:
+\item{LAU_ISO}{a code to identify the corresponding ISO of the country since LAU_ID are not unique over Europe}
+
+\item{pollutants}{the pollutants for which to download data. It may be:
 \itemize{
 \item{character vector representing the short names of the pollutants to analyse. The reference is the
 variable \code{Notation} in the dataset \code{pollutants} provided by this package.}
@@ -35,23 +37,19 @@ in the dataset \code{pollutants} provided by this package.}
 \item{from}{the starting point of the time window to consider.
 It may be:
 \itemize{
-\item{integer representing the year (data are downloaded starting from the first day of the year specified)}
 \item{character containing a specific day of the year in the format \code{yyyy-mm-dd}}
 }}
 
 \item{to}{the ending point of the time window to consider.
 It may be:
 \itemize{
-\item{integer representing the year (data are downloaded ending at the last day of the year specified)}
 \item{character containing a specific day of the year in the format \code{yyyy-mm-dd}}
-}}
-
-\item{ID}{logic value (T or F). If \code{TRUE}, the character specified in the parameter \code{zone_name}
-is the unique identifier code provided by Eurostat. The reference is the \code{NUTS_ID} column from the
+}
+ID logic value (T or F). If \code{TRUE} (the default), the character specified in the parameter \code{zone_name}
+is the unique identifier code provided by Eurostat. The reference is the \code{NUTS_ID}  column from the
 \code{NUTS} dataset or the \code{LAU_ID} from the \code{LAU} dataset.
-If \code{FALSE} (the default), the character specified in the parameter \code{zone_name} is the zone name
-expressed in latin characters. The reference is the \code{NAME_LATN} column from the \code{NUTS} dataset and the
-\code{LAU_NAME} column from the \code{LAU} dataset.}
+Also, in the case of using \code{LATN_NAME} from the \code{NUTS} dataset or \code{LAU_NAME} from the \code{LAU} dataset, TRUE must be specified.
+If \code{FALSE} , it is used when \code{polygon} or \code{quadrant} are not null.}
 
 \item{quadrant}{a list of bidimensional numeric vectors containing the coordinates in \bold{WGS84} format.
 If the list has two elements, the function builds a square using the two coordinates as
@@ -59,7 +57,6 @@ opposite extremes. If the list contains three or more elements, every point is a
 polygon, in particular the convex hull of the specified points.}
 
 \item{polygon}{A \code{sfc_POLYGON} or \code{sfc_MULTIPOLYGON} class object
-(see \url{https://CRAN.R-project.org/package=sf} for further information), specifying the area of interest.
 The polygon can be imported via shapefile or other formats from the user.}
 
 \item{verbose}{logic value (T or F). If \code{TRUE} (the default) information about
@@ -74,61 +71,25 @@ This function imports air quality datasets at european level, based on the zone,
 This function generates an \code{EEAaq_df} object, or an \code{EEAaq_df_sfc}.
 }
 \details{
+Some specific notes:
+\itemize{
+\item{If the parameter \code{zone_name} corresponds to a valid \code{CITY_NAME} (i.e., not NULL in the dataset), the function will return the corresponding data. If no valid \code{CITY_NAME} is associated with the \code{zone_name}, the function attempts to retrieve all available data for the entire country and subsequently filter for the specified zone_name.}
+\item{For very small towns or certain countries, such as Turkey or Albania, data may not currently be available in the dataset. This limitation reflects the data unavailability at the the EEA Air Quality Viewer \url{https://discomap.eea.europa.eu/App/AQViewer/index.html?fqn=Airquality_Dissem.b2g.AirQualityStatistics}.}
+\item{If the parameters used in the query include \code{polygon} or \code{quadrant}, the function returns a \code{EEAaq_df_sfc} object. Otherwise, it returns an \code{EEAaq_df} object, which is a tibble dataframe.}
+}
 The NUTS classification (Nomenclature of territorial units for statistics) is a hierarchical system for dividing up the economic territory of the EU and the UK.
-The levels are defined as follows:
+The levels are defined as in \url{https://ec.europa.eu/eurostat/web/gisco/geodata/statistical-units/territorial-units-statistics}, that is,
 \itemize{
 \item{\strong{NUTS 0}: the whole country}
 \item{\strong{NUTS 1}: major socio-economic regions}
 \item{\strong{NUTS 2}: basic regions for the application of regional policies}
 \item{\strong{NUTS 3}: small regions for specific diagnoses}
 }
-Further information is available at \url{https://ec.europa.eu/eurostat/web/nuts/background}.
-These LAUs (Local Administrative Units) are the building blocks of the NUTS, and comprise the municipalities and communes of the European Union.
-For further information see \url{https://ec.europa.eu/eurostat/web/nuts/local-administrative-units}.
-Note that a specific name can be associated with both LAU and NUTS levels.
-For instance "Milano" is either a city or a NUTS 3 area in Italy. To download data referred to the city,
-specify \code{zone_name = "Milano"} and \code{NUTS_level = "LAU"}, while to download data referred to the province, specify
-\code{zone_name = "Milano"} and \code{NUTS_level = "NUTS3"}.
-One of \code{zone_name}, \code{quadrant} and \code{polygon} should always be specified by the user.
 }
 \examples{
-
 \donttest{
-library(dplyr)
-library(utils)
-#Download of the PM10 data in Milan (Lombardia, Italy) during 2023.
-EEAaq_get_data(zone_name = "Milano", NUTS_level = "LAU",
-  pollutant = "PM10", from = 2023, to = 2023, ID = FALSE, verbose = TRUE)
-
-#Alternatively, it is possible to obtain the same result using
-#the LAU_ID of Milan and the pollutant code:
-EEAaq_get_data(zone_name = "015146", NUTS_level = "LAU",
-  pollutant = "PM10", from = 2023, to = 2023, ID = TRUE, verbose = TRUE)
-
-#Another way to get the nitrogen dioxide in Milan during 2023,
-#is to extract the geometry from the LAU dataset and use it with the polygon parameter:
-temp <- tempfile()
-download.file("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/LAU.rds",
-  temp, quiet = TRUE)
-milan <- readRDS(temp) \%>\%
-    filter(LAU_NAME == "Milano") \%>\%
-    pull(geometry)
-EEAaq_get_data(pollutant = "PM10", from = 2023, to = 2023, polygon = milan)
-
-#Another option is to choose the exact dates, for example,
-#in order to import Milan PM10 january 2023 data,
-#it is possible to write:
-EEAaq_get_data(polygon = milan, pollutant = "PM10", from = "2023-01-01", to = "2023-01-31")
-
-#Spcifying the parameter quadrant, it is possible to choose
-#a specific quadrant on the geographic map.
-#For instance, using the points (11.5, 46.5), (10.5, 46),
-#will be imported data about the air quality stations
-#located inside the rectangle which has, as opposite vertexes,
-#the two selected points. In this case
-#PM10 and PM2.5 data are downloaded for the whole 2021:
-EEAaq_get_data(pollutant = c("PM10", "PM2.5"),
-  quadrant = list(c(11.5, 46.5), c(10.5, 46)),
-  from = 2021, to = 2021, verbose = TRUE)
+# Download hourly NO2 concentration for Milan city (LAU = 15146) in 2023
+data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",LAU_ISO = "IT",
+pollutants = c("NO2","CO"), from = "2023-01-01", to = "2023-12-31",  verbose = TRUE)
 }
 }

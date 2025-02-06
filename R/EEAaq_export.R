@@ -13,8 +13,9 @@
 #' @examples
 #' \donttest{
 #' #Download a dataset with the function EEAaq_get_data, which generate an EEAaq_df object.
-#' data <- EEAaq_get_data(zone_name = "Milano", NUTS_level = "LAU", pollutant = "PM10",
-#'   from = 2021, to = 2021, verbose = TRUE)
+#' data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",
+#'                        LAU_ISO = "IT", pollutants = "PM10",
+#'                        from = "2023-01-01", to = "2023-05-31")
 #' temp <- tempdir()
 #' filepath <- paste0(temp, "/data.csv")
 #' EEAaq_export(data = data, filepath = filepath, format = "csv", shape = TRUE)
@@ -34,24 +35,10 @@ EEAaq_export <- function(data, filepath, format, shape = FALSE) {
 
 
   #Download dei dataset NUTS e LAU
-  temp <- tempfile()
-  res <- curl::curl_fetch_disk("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/LAU.rds", temp)
-  if(res$status_code == 200) {
-    LAU <- readRDS(temp)
-  } else {
-    stop("The internet resource is not available at the moment, try later.
-       If the problem persists, please contact the maintainer.")
-  }
 
+  LAU <- EEAaq_get_dataframe(dataframe = "LAU")
 
-  temp <- tempfile()
-  res <- curl::curl_fetch_disk("https://github.com/AgostinoTassanMazzocco/EEAaq/raw/main/NUTS.rds", temp)
-  if(res$status_code == 200) {
-    NUTS <- readRDS(temp)
-  } else {
-    stop("The internet resource is not available at the moment, try later.
-       If the problem persists, please contact the maintainer.")
-  }
+  NUTS <- EEAaq_get_dataframe(dataframe = "NUTS")
 
   #Se l'oggetto non e' di classe EEAaq_df errore
   stopifnot("The given object for the parameter data is not an 'EEAaq_df' class object" =
@@ -75,13 +62,19 @@ EEAaq_export <- function(data, filepath, format, shape = FALSE) {
     }
   } else if(shape == T & "EEAaq_df_sfc" %notin% class(data)) {
     if(attributes(data)$NUTS_level == "LAU") {
-      sh <- LAU  %>% as.data.frame() %>% dplyr::filter(.data$LAU_NAME %in% attributes(data)$zone_name) %>% sf::st_as_sf()
+
+      sh <-  LAU   %>% as.data.frame() %>% dplyr::filter((.data$LAU_NAME %in% attributes(data)$zone_name |
+                                                            .data$LAU_ID %in% attributes(data)$zone_name) &
+                                                           .data$ISO %in% attributes(data)$countries)  %>% sf::st_as_sf()
     } else {
       lev <- code_extr(level = attributes(data)$NUTS_level)
-      sh <- NUTS  %>% as.data.frame() %>% dplyr::filter(.data$LEVL_CODE == lev & .data$NAME_LATN %in% attributes(data)$zone_name) %>% sf::st_as_sf()
+      sh <- NUTS  %>% as.data.frame() %>% dplyr::filter(.data$LEVL_CODE == lev & (
+        .data$NAME_LATN %in% attributes(data)$zone_name  | .data$NUTS_ID %in% attributes(data)$zone_name )) %>% sf::st_as_sf()
 
     }
     sf::st_write(obj = sh[,!nchar(colnames(sh))>10], dsn = paste0(substr(filepath, 1, nchar(filepath)-4), ".shp"), quiet = T, append = FALSE)
   }
 
 }
+
+

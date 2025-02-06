@@ -11,15 +11,20 @@ EEAaq_get_stations(byStation = FALSE, complete = TRUE)
 If \code{FALSE} the dataset is organized by sampling point. Each station have multiple sampling points.}
 
 \item{complete}{Logic value (T or F). If \code{TRUE}, the dataset contains all the variables given by the EEA.
-If \code{FALSE} the dataset contains only a few variables, the most importants. For further details about the variables, see \code{\link{stations}}.}
+If \code{FALSE} the dataset contains only a few variables, the most importants. For further details about the variables, see \code{stations}.}
 }
 \value{
-A tibble containing the stations information. Further details available here \code{\link{stations}}.
+A tibble containing the stations information. Further details available here \code{stations}.
 }
 \description{
 Download the updated dataset from EEA, containing measurement station information. For further information about the variables
-see \code{\link{stations}}.
+see \code{stations}.
+}
+\details{
+Note that, for very small towns or certain countries, such as Turkey or Albania, data may not currently be available in the dataset. This limitation reflects the data unavailability at the the EEA Air Quality Viewer \url{https://discomap.eea.europa.eu/App/AQViewer/index.html?fqn=Airquality_Dissem.b2g.AirQualityStatistics}.
 }
 \examples{
-\donttest{EEAaq_get_stations(byStation = FALSE, complete = TRUE)}
+\donttest{
+EEAaq_get_stations(byStation = FALSE, complete = TRUE)
+}
 }

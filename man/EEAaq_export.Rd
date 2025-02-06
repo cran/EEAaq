@@ -27,8 +27,9 @@ and exports the associated shapefile as well.
 \examples{
 \donttest{
 #Download a dataset with the function EEAaq_get_data, which generate an EEAaq_df object.
-data <- EEAaq_get_data(zone_name = "Milano", NUTS_level = "LAU", pollutant = "PM10",
-  from = 2021, to = 2021, verbose = TRUE)
+data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",
+                       LAU_ISO = "IT", pollutants = "PM10",
+                       from = "2023-01-01", to = "2023-05-31")
 temp <- tempdir()
 filepath <- paste0(temp, "/data.csv")
 EEAaq_export(data = data, filepath = filepath, format = "csv", shape = TRUE)

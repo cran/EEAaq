@@ -20,10 +20,11 @@
 #' }
 #' @examples
 #' \donttest{
-#' data <- EEAaq_get_data(zone_name = "Milano", NUTS_level = "LAU",
-#'   pollutant = "PM10", from = 2023, to = 2023, ID = FALSE, verbose = TRUE)
-#' EEAaq_summary(data)
-#' }
+#'data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",LAU_ISO = "IT",
+#' pollutants = "PM10", from = "2023-01-01", to = "2023-05-31",  verbose = TRUE)
+#'
+#' EEAaq_summary(data)}
+#'
 #' @export
 
 EEAaq_summary <- function(data = NULL, verbose = TRUE) {
@@ -52,12 +53,12 @@ EEAaq_summary <- function(data = NULL, verbose = TRUE) {
   EEA_summ <- function(pollutant, data) {
     data_poll <- dplyr::pull(data, pollutant)
     row <- tibble::tibble(Pollutant = pollutant) %>% dplyr::mutate(NA_count = sum(is.na(data_poll)),
-                                                    NA_perc = sum(is.na(data_poll))/length(data_poll) * 100,
-                                                    negative_count = sum(stats::na.omit(data_poll) < 0),
-                                                    min = min(data_poll[data_poll >= 0], na.rm = T),
-                                                    mean = mean(data_poll, na.rm = T),
-                                                    max = max(data_poll, na.rm = T),
-                                                    sd = stats::sd(data_poll, na.rm = T))
+                                                                   NA_perc = sum(is.na(data_poll))/length(data_poll) * 100,
+                                                                   negative_count = sum(stats::na.omit(data_poll) < 0),
+                                                                   min = min(data_poll[data_poll >= 0], na.rm = T),
+                                                                   mean = mean(data_poll, na.rm = T),
+                                                                   max = max(data_poll, na.rm = T),
+                                                                   sd = stats::sd(data_poll, na.rm = T))
   }
 
   output$Summary <- dplyr::bind_rows(lapply(pollutant, EEA_summ, data = data))
@@ -70,39 +71,39 @@ EEAaq_summary <- function(data = NULL, verbose = TRUE) {
   #SUMMARY BY STATION
 
   NA_count_byStat <- dplyr::bind_cols(unique_stations,
-                               lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = sum(is.na(get(pollutant)))) %>% dplyr::select("poll"), data = data)) %>%
+                                      lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = sum(is.na(data[[pollutant]]))) %>% dplyr::select("poll"), data = data)) %>%
     suppressMessages()
 
   NA_perc_byStat <- dplyr::bind_cols(unique_stations,
-                              lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = sum(is.na(get(pollutant)))/length(get(pollutant)) * 100) %>% dplyr::select("poll"), data = data)) %>%
+                                     lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = sum(is.na(data[[pollutant]]))/length(data[[pollutant]]) * 100) %>% dplyr::select("poll"), data = data)) %>%
     suppressMessages()
 
   Negative_count_byStat <- dplyr::bind_cols(unique_stations,
-                                     lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = sum(stats::na.omit(get(pollutant)) < 0)) %>% dplyr::select("poll"), data = data)) %>%
+                                            lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = sum(stats::na.omit(data[[pollutant]]) < 0)) %>% dplyr::select("poll"), data = data)) %>%
     suppressMessages()
 
   Min_byStat <- dplyr::bind_cols(unique_stations,
-                          lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = min(get(pollutant), na.rm = T)) %>% dplyr::select("poll"), data = data)) %>%
+                                 lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = min(data[[pollutant]], na.rm = T)) %>% dplyr::select("poll"), data = data)) %>%
     suppressMessages() %>% suppressWarnings()
   Min_byStat[sapply(Min_byStat, is.infinite)] <- NA
 
   Mean_byStat <- dplyr::bind_cols(unique_stations,
-                           lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = mean(get(pollutant), na.rm = T)) %>% dplyr::select("poll"), data = data)) %>%
+                                  lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = mean(data[[pollutant]], na.rm = T)) %>% dplyr::select("poll"), data = data)) %>%
     suppressMessages()
   Mean_byStat[sapply(Mean_byStat, is.nan)] <- NA
 
   Max_byStat <- dplyr::bind_cols(unique_stations,
-                          lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = max(get(pollutant), na.rm = T)) %>% dplyr::select("poll"), data = data)) %>%
+                                 lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = max(data[[pollutant]], na.rm = T)) %>% dplyr::select("poll"), data = data)) %>%
     suppressMessages() %>% suppressWarnings()
   Max_byStat[sapply(Max_byStat, is.infinite)] <- NA
 
   Sd_byStat <- dplyr::bind_cols(unique_stations,
-                         lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = stats::sd(get(pollutant), na.rm = T)) %>% dplyr::select("poll"), data = data)) %>%
+                                lapply(pollutant, function(pollutant, data) data %>% dplyr::group_by(.data$AirQualityStationEoICode) %>% dplyr::summarise(poll = stats::sd(data[[pollutant]], na.rm = T)) %>% dplyr::select("poll"), data = data)) %>%
     suppressMessages()
 
 
   base <-  lapply(pollutant, function(pollutant, data) {data %>% dplyr::select(-"DatetimeBegin", -"DatetimeEnd") %>%
-      dplyr::filter(!is.na(get(pollutant))) %>% dplyr::select("AirQualityStationEoICode", dplyr::contains(pollutant), "AveragingTime") %>%
+      dplyr::filter(!is.na(data[[pollutant]])) %>% dplyr::select("AirQualityStationEoICode", dplyr::contains(pollutant), "AveragingTime") %>%
       tidyr::pivot_longer(cols = pollutant, names_to = "AirPollutant") %>% dplyr::select(-"value") %>% dplyr::distinct(.data$AirQualityStationEoICode, .data$AveragingTime, .data$AirPollutant) %>%
       tidyr::pivot_wider(names_from = "AirPollutant", values_from = "AveragingTime", values_fn = ~paste(.x, collapse = ", "))}, data = data)
   AveragingTime_byStat <- dplyr::left_join(unique_stations, dplyr::distinct(data, .data$AirQualityStationEoICode, .data$AirQualityStationName), by = c("AirQualityStationEoICode", "AirQualityStationName"))
@@ -117,6 +118,7 @@ EEAaq_summary <- function(data = NULL, verbose = TRUE) {
     colnames(Min_byStat) <- colnames(Mean_byStat) <- colnames(Max_byStat) <- colnames(Sd_byStat) <-
     c("AirQualityStationEoICode", "AirQualityStationName", pollutant)
 
+  #Aggiungo tutte le statistiche di sintesi
   output$Summary_byStat$NA_count_byStat <- NA_count_byStat
   output$Summary_byStat$NA_perc_byStat <- NA_perc_byStat
   output$Summary_byStat$Negative_count_byStat <- Negative_count_byStat
@@ -126,6 +128,7 @@ EEAaq_summary <- function(data = NULL, verbose = TRUE) {
   output$Summary_byStat$Sd_byStat <- Sd_byStat
   output$Summary_byStat$AveragingTime_byStat <- AveragingTime_byStat
 
+  #Creazione della tabella relativa alla gap length
   un_st <- unique(data$AirQualityStationEoICode)
   g_length <- function(pollutant, data) {
     for (i in 1:length(un_st)) {
@@ -150,7 +153,7 @@ EEAaq_summary <- function(data = NULL, verbose = TRUE) {
                        q25_gap = stats::quantile(.data$gap, probs = 0.25), mean_gap = round(mean(.data$gap), 3),
                        median_gap = stats::quantile(.data$gap, probs = 0.5), q75_gap = stats::quantile(.data$gap, probs = 0.75),
                        max_gap = max(.data$gap), sd_gap = round(stats::sd(.data$gap), 3)) %>% as.data.frame() %>%
-      dplyr::mutate(dplyr::across(dplyr::contains("gap"), ~mondate::as.difftime(.x, units = "hours"))) %>% suppressWarnings() %>% dplyr::tibble()
+      dplyr::mutate(dplyr::across(dplyr::contains("gap"), ~paste(.x, "hours"))) %>% suppressWarnings() %>% dplyr::tibble()
   }
   gl <- lapply(pollutant, g_length, data = data)
   names(gl) <- pollutant
@@ -182,6 +185,3 @@ EEAaq_summary <- function(data = NULL, verbose = TRUE) {
   return(output)
 
 }
-
-
-

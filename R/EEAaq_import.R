@@ -10,20 +10,26 @@
 #' @examples
 #' \donttest{
 #' #Download a dataset with the function EEAaq_get_data, which generate an EEAaq_df object.
-#' data <- EEAaq_get_data(zone_name = "Milano", NUTS_level = "LAU", pollutant = "PM10",
-#'   from = 2021, to = 2021, verbose = TRUE)
+#' data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",LAU_ISO = "IT",
+#' pollutants = "PM10", from = "2023-01-01", to = "2023-05-31",  verbose = TRUE)
+#'
 #' temp <- tempdir()
 #' filepath <- paste0(temp, "/data.csv")
 #' #Export the dataset and the associated shape
 #' EEAaq_export(data = data, filepath = filepath, format = "csv", shape = TRUE)
 #' #Import the EEAaq_df object saved in the previous code line
-#' EEAaq_import(file_data = filepath, file_shape = paste0(temp, "/data.shp"))
-#' }
+#' EEAaq_import(file_data = filepath, file_shape = paste0(temp, "/data.shp"))}
+#'
 #' @export
 
 
 
 EEAaq_import <- function(file_data, file_shape) {
+
+  if(!curl::has_internet()) {
+    stop("Please check your internet connection. If the problem persists, please
+         contact the package maintainer.") #se false, stop interrompe esecuzione
+  }
 
   `%>%` <- dplyr::`%>%`
   #Lettura dei dati
@@ -48,6 +54,3 @@ EEAaq_import <- function(file_data, file_shape) {
   return(data)
 
 }
-
-
-
