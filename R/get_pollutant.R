@@ -1,5 +1,3 @@
-
-
 #'@title Get pollutant
 #'
 #' @description Retrieve Pollutant Data from EEA Vocabulary (https://dd.eionet.europa.eu/vocabulary/aq/pollutant)
@@ -8,8 +6,6 @@
 #'
 #' @return A tibble containing pollutant information with selected columns (e.g., URI, notation, and extracted code).
 #'
-#'
-
 get_pollutants<- function() {
   `%>%` <- dplyr::`%>%`
 
@@ -17,8 +13,6 @@ get_pollutants<- function() {
   if (!curl::has_internet()) {
     stop("Please check your internet connection. If the problem persists, please contact the package maintainer.")
   }
-
-
 
   url <- "https://dd.eionet.europa.eu/vocabulary/aq/pollutant/csv"
 

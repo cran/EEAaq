@@ -8,8 +8,6 @@
 #' @param year expressed as four digit (YYYY)
 #' @return  A tibble containing  LAUs  information with selected columns (e.g., ISO, LAU_ID, NUTS3_ID  and geometry ).
 #'
-#'
-#'
 
 get_LAU <- function(year= "Null") {
 

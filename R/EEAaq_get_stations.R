@@ -13,11 +13,11 @@
 #'
 #' @examples
 #' \donttest{
-#' EEAaq_get_stations(byStation = FALSE, complete = TRUE)
+#' EEAaq_get_stations(byStation = TRUE, complete = TRUE)
 #' }
 #' @export
 
-EEAaq_get_stations <- function(byStation = FALSE, complete = TRUE) {
+EEAaq_get_stations <- function(byStation = TRUE, complete = TRUE) {
 
   `%>%` <- dplyr::`%>%`
 
@@ -29,20 +29,24 @@ EEAaq_get_stations <- function(byStation = FALSE, complete = TRUE) {
 
   stations <- EEAaq_get_dataframe(dataframe = "stations")
 
+  stations <- stations %>%
+    dplyr::mutate(SamplingPointId = paste0(.data$ISO, "/", .data$SamplingPointId),
+                  OperationalActivityBegin = lubridate::dmy_hms(.data$OperationalActivityBegin),
+                  OperationalActivityEnd = lubridate::dmy_hms(.data$OperationalActivityEnd))
+
   if(byStation == T) {
-    stations <- stations %>% dplyr::distinct(.data$AirQualityStationEoICode, .keep_all = T) %>%
-      dplyr::select("AirQualityStationEoICode", "AirQualityStationNatCode", "AirQualityStationName", "AirQualityStationArea", "AirQualityStationType", "Longitude", "Latitude", "Altitude", "ISO", "NUTS1", "NUTS1_ID",
-                    "NUTS2", "NUTS2_ID", "NUTS3", "NUTS3_ID", "LAU_NAME", "LAU_ID", "AirQualityNetwork", "AirQualityNetworkName",
-                    "Timezone")
+    stations <- stations %>%
+      dplyr::distinct(.data$AirQualityStationEoICode, .keep_all = T)
     if(complete == F) {
-      stations <- stations %>% dplyr::select("AirQualityStationEoICode", "AirQualityStationNatCode", "AirQualityStationName", "AirQualityStationArea", "AirQualityStationType", "Longitude", "Latitude", "Altitude", "ISO", "NUTS1",
-                                             "NUTS2", "NUTS3", "LAU_NAME")
+      stations <- stations %>%
+        dplyr::select("AirQualityStationEoICode", "AirQualityStationNatCode", "AirQualityStationName", "AirQualityStationArea", "AirQualityStationType", "Longitude", "Latitude", "Altitude", "ISO",
+                      "NUTS1", "NUTS2", "NUTS3", "LAU_NAME")
     }
-  } else if(byStation == F & complete == F) {
-    stations <- stations %>% dplyr::select("SamplingPointId", "AirQualityStationEoICode", "AirQualityStationName", "AirPollutant", "OperationalActivityBegin", "OperationalActivityEnd", "ISO", "NUTS1", "NUTS2", "NUTS3", "LAU_NAME", "AirQualityStationArea", "AirQualityStationType", "Longitude", "Latitude", "Altitude", "Timezone")
+  } else if(complete == F) {
+    stations <- stations %>%
+      dplyr::select("SamplingPointId", "AirQualityStationEoICode", "AirQualityStationName", "AirPollutant", "OperationalActivityBegin", "OperationalActivityEnd", "ISO", "NUTS1", "NUTS2", "NUTS3", "LAU_NAME", "AirQualityStationArea", "AirQualityStationType", "Longitude", "Latitude", "Altitude", "Timezone")
   }
 
 
   return(stations)
-
 }

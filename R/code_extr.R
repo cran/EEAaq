@@ -1,11 +1,9 @@
 #' Code_extr
-#'@description
+#' @description
 #' This function extracts the numerical value from NUTS-level strings.
 #' @param level  A character vector representing NUTS-level codes (e.g., `c("NUTS2", "NUTS3")`).
 #'
 #' @return A sorted numeric vector containing the extracted NUTS levels.
-#'
-#'
 #'
 code_extr <- function(level) {
   code <- vector()

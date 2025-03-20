@@ -2,34 +2,42 @@
 % Please edit documentation in R/EEAaq_import.R
 \name{EEAaq_import}
 \alias{EEAaq_import}
-\title{Reverse function of \code{EEAaq_export}. Reads an \code{EEAaq_df} object}
+\title{Reverse function of \code{EEAaq_export}. Reads an \code{EEAaq_df} object from a .txt or .csv
+file saved through \code{\link{EEAaq_export}}.}
 \usage{
-EEAaq_import(file_data, file_shape)
+EEAaq_import(file_data)
 }
 \arguments{
-\item{file_data}{file path of the 'csv' or 'txt' file containing the air quality data
-to import.}
-
-\item{file_shape}{file path of the shapefile associated to the dataset used in \code{file_data}}
+\item{file_data}{file path of the 'csv' or 'txt' file containing the air quality data to import.}
 }
 \value{
 No return value, called for side effects.
 }
 \description{
-Given the file containing the data saved with \code{\link{EEAaq_export}}, and the
-associated shapefile, \code{EEAaq_read} imports the \code{EEAaq_df} class object.
+Reverse function of \code{EEAaq_export}. Reads an \code{EEAaq_df} object from a .txt or .csv
+file saved through \code{\link{EEAaq_export}}.
 }
 \examples{
 \donttest{
-#Download a dataset with the function EEAaq_get_data, which generate an EEAaq_df object.
-data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",LAU_ISO = "IT",
-pollutants = "PM10", from = "2023-01-01", to = "2023-05-31",  verbose = TRUE)
+`\%>\%` <- dplyr::`\%>\%`
+### Download PM10 data for the province (NUTS-3) of Milano (Italy)
+###   from January 1st to January 31st, 2023
+IDstations <- EEAaq_get_stations(byStation = TRUE, complete = FALSE)
+IDstations <- IDstations \%>\%
+                dplyr::filter(NUTS3 \%in\% c("Milano")) \%>\%
+                dplyr::pull(AirQualityStationEoICode) \%>\%
+                unique()
+data <- EEAaq_get_data(IDstations = IDstations, pollutants = "PM10",
+                       from = "2023-01-01", to = "2023-01-31",
+                       verbose = TRUE)
 
+### Export data to csv file
 temp <- tempdir()
 filepath <- paste0(temp, "/data.csv")
-#Export the dataset and the associated shape
-EEAaq_export(data = data, filepath = filepath, format = "csv", shape = TRUE)
-#Import the EEAaq_df object saved in the previous code line
-EEAaq_import(file_data = filepath, file_shape = paste0(temp, "/data.shp"))}
+EEAaq_export(data = data, filepath = filepath, format = "csv")
+
+### Import the EEAaq_df object saved in the previous code line
+EEAaq_import(file_data = filepath)
+}
 
 }

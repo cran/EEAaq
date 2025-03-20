@@ -9,7 +9,6 @@
 #' @param to EndDate (in "YYYY-MM-DD" format).
 #'
 #' @return A list of datasets with associated date ranges and descriptions.
-#'
 
 handle_dates <- function(from,to ) {
 

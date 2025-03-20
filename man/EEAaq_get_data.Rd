@@ -5,26 +5,15 @@
 \title{Download air quality data at european level from the EEA download service}
 \usage{
 EEAaq_get_data(
-  zone_name = NULL,
-  NUTS_level = NULL,
-  LAU_ISO = NULL,
+  IDstations = NULL,
   pollutants = NULL,
   from = NULL,
   to = NULL,
-  quadrant = NULL,
-  polygon = NULL,
   verbose = TRUE
 )
 }
 \arguments{
-\item{zone_name}{character vector specifying the names of the zones to consider. The reference is the NUTS and LAU nomenclature by Eurostat.
-See \emph{Details}.}
-
-\item{NUTS_level}{character that specify the level of NUTS or LAU, to which \code{zone_name} belongs.
-Allowed values are 'NUTS0', 'NUTS1', 'NUTS2', 'NUTS3', 'LAU'.
-For further information see \emph{Details}.}
-
-\item{LAU_ISO}{a code to identify the corresponding ISO of the country since LAU_ID are not unique over Europe}
+\item{IDstations}{Numeric value. Unique ID of the stations to retrieve.}
 
 \item{pollutants}{the pollutants for which to download data. It may be:
 \itemize{
@@ -34,62 +23,41 @@ variable \code{Notation} in the dataset \code{pollutants} provided by this packa
 in the dataset \code{pollutants} provided by this package.}
 }}
 
-\item{from}{the starting point of the time window to consider.
-It may be:
-\itemize{
-\item{character containing a specific day of the year in the format \code{yyyy-mm-dd}}
-}}
+\item{from}{character defining the initial date of the period to be retrieved. The format is \code{yyyy-mm-dd}.}
 
-\item{to}{the ending point of the time window to consider.
-It may be:
-\itemize{
-\item{character containing a specific day of the year in the format \code{yyyy-mm-dd}}
-}
-ID logic value (T or F). If \code{TRUE} (the default), the character specified in the parameter \code{zone_name}
-is the unique identifier code provided by Eurostat. The reference is the \code{NUTS_ID}  column from the
-\code{NUTS} dataset or the \code{LAU_ID} from the \code{LAU} dataset.
-Also, in the case of using \code{LATN_NAME} from the \code{NUTS} dataset or \code{LAU_NAME} from the \code{LAU} dataset, TRUE must be specified.
-If \code{FALSE} , it is used when \code{polygon} or \code{quadrant} are not null.}
+\item{to}{character defining the final date of the period to be retrieved. The format is \code{yyyy-mm-dd}.}
 
-\item{quadrant}{a list of bidimensional numeric vectors containing the coordinates in \bold{WGS84} format.
-If the list has two elements, the function builds a square using the two coordinates as
-opposite extremes. If the list contains three or more elements, every point is a vertex of a
-polygon, in particular the convex hull of the specified points.}
-
-\item{polygon}{A \code{sfc_POLYGON} or \code{sfc_MULTIPOLYGON} class object
-The polygon can be imported via shapefile or other formats from the user.}
-
-\item{verbose}{logic value (T or F). If \code{TRUE} (the default) information about
-the function progress are printed. If \code{FALSE} no message is printed.}
+\item{verbose}{logic value (T or F). If \code{TRUE} (the default) information about the function progress are printed.
+If \code{FALSE} no message is printed.}
 }
 \value{
 A data frame of class \code{EEAaq_df}, if \code{zone_name} is specified, and of class \code{EEAaq_df_sfc}
 if whether the parameter \code{quadrant} or \code{polygon} is specified.
 }
 \description{
-This function imports air quality datasets at european level, based on the zone, time and pollutant specifications.
-This function generates an \code{EEAaq_df} object, or an \code{EEAaq_df_sfc}.
+This function retrieves air quality datasets at european level, based on station, time and pollutant specifications.
+This function generates a \code{data.frame/tibble} object of class \code{EEAaq_df}.
 }
 \details{
-Some specific notes:
-\itemize{
-\item{If the parameter \code{zone_name} corresponds to a valid \code{CITY_NAME} (i.e., not NULL in the dataset), the function will return the corresponding data. If no valid \code{CITY_NAME} is associated with the \code{zone_name}, the function attempts to retrieve all available data for the entire country and subsequently filter for the specified zone_name.}
-\item{For very small towns or certain countries, such as Turkey or Albania, data may not currently be available in the dataset. This limitation reflects the data unavailability at the the EEA Air Quality Viewer \url{https://discomap.eea.europa.eu/App/AQViewer/index.html?fqn=Airquality_Dissem.b2g.AirQualityStatistics}.}
-\item{If the parameters used in the query include \code{polygon} or \code{quadrant}, the function returns a \code{EEAaq_df_sfc} object. Otherwise, it returns an \code{EEAaq_df} object, which is a tibble dataframe.}
-}
-The NUTS classification (Nomenclature of territorial units for statistics) is a hierarchical system for dividing up the economic territory of the EU and the UK.
-The levels are defined as in \url{https://ec.europa.eu/eurostat/web/gisco/geodata/statistical-units/territorial-units-statistics}, that is,
-\itemize{
-\item{\strong{NUTS 0}: the whole country}
-\item{\strong{NUTS 1}: major socio-economic regions}
-\item{\strong{NUTS 2}: basic regions for the application of regional policies}
-\item{\strong{NUTS 3}: small regions for specific diagnoses}
-}
+Recall that stations and sensors are physically managed by national or local environmental protection agencies with their own specificities and rules.
+EEA operates as a collector of national environmental protection systems and harmonizes the information received by national offices.
+However, data provided can change on a country basis. For instance, time resolution, sampling frequency, spatial coverage, or
+the classifications (e.g., urban or rural) can differ country by country. Before downloading the data, we suggest to manage and filter the stations/sensors
+of interest through their metadata files (provided by \code{EEAaq_get_stations} or \code{EEAaq_get_dataframe}). See the examples and the vignette
+for practical examples.
 }
 \examples{
 \donttest{
-# Download hourly NO2 concentration for Milan city (LAU = 15146) in 2023
-data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",LAU_ISO = "IT",
-pollutants = c("NO2","CO"), from = "2023-01-01", to = "2023-12-31",  verbose = TRUE)
+`\%>\%` <- dplyr::`\%>\%`
+### Download PM10 data for the province (NUTS-3) of Milano (Italy)
+### from January 1st to January 31st, 2023
+IDstations <- EEAaq_get_stations(byStation = TRUE, complete = FALSE)
+IDstations <- IDstations \%>\%
+                dplyr::filter(NUTS3 \%in\% c("Milano")) \%>\%
+                dplyr::pull(AirQualityStationEoICode) \%>\%
+                unique()
+data <- EEAaq_get_data(IDstations = IDstations, pollutants = "PM10",
+                       from = "2023-01-01", to = "2023-01-31",
+                       verbose = TRUE)
 }
 }

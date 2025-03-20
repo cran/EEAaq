@@ -7,7 +7,6 @@
 #' For each station, the column AirQualityStationEoICode (identical for all sensors at the same station) was used to select the first row containing unique values for CITY_NAME and CITY_ID. No station reported more than one value for this pair of columns.
 #' To support future uploads, it is necessary to integrate updated AirQualityStationEoICode values.
 #' @return a tibble
-#'
 
 get_stations <- function() {
   `%>%` <- dplyr::`%>%`
@@ -109,9 +108,8 @@ get_stations <- function() {
     sf::st_drop_geometry()
 
 
-# get missing cities dataframe
 
-
+  # get missing cities dataframe
   temp <- tempfile()
   res <- curl::curl_fetch_disk("https://github.com/PaoloMaranzano/EEAaq_R_Support/raw/refs/heads/main/missing_cities.rds", temp)
   if (res$status_code == 200) {
@@ -121,11 +119,6 @@ get_stations <- function() {
     stop("The internet resource is not available at the moment, try later.
        If the problem persists, please contact the package maintainer.")
   }
-
-
-
-
-
 
   stations <- stations %>%
     dplyr::left_join(missing_cities, by = c("AirQualityStationEoICode", "AirQualityNetwork")) %>%
@@ -157,8 +150,6 @@ get_stations <- function() {
 
   # Combina le due parti
   stations <- dplyr::bind_rows(station_valid, station_nuts3_na)
-
-
 
   stations <- stations %>%
     dplyr::mutate(SamplingPointId = paste0(.data$ISO, "/", .data$SamplingPointId)) %>%

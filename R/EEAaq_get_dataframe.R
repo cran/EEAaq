@@ -1,7 +1,7 @@
 #'@title EEAaq_get_dataframe
 #'
-#' @description Retrieve one of the metadata (i.e., LAU, NUTS, stations, or pollutant) tables from the EEA
-#' dataflow. This function downloads and loads one dataset at a time from a predefined list of available datasets.
+#' @description Retrieve one of the metadata (i.e., LAU, NUTS, stations, or pollutant) tables from the EEA and Eurostat
+#' dataflows. This function downloads and loads one dataset at a time from a predefined list of available datasets.
 #' Ensure that the dataset name is written correctly. See details for further details.
 #' @param dataframe name of the \code{data.frame} to retrieve. Select among:
 #' \itemize{
@@ -15,17 +15,20 @@
 #' Information include: unique identifiers, extended descriptions, and unit of measure.}
 #' }
 #' @details
-#' The function retrieves from the EEAaq GitHub folder one of the following metadata:
-#' since 2024, the data EEA air quality retrieving dataflow is undergoing a major re-organization. In particular, since January 2025, raw data are accessible only through an online platform/dashboard. While \code{EEAaq} is build to
-#' explicitly deal with the automatic and constantly-updated system for raw data, the same process is not always possible for the metadata.
+#' The function retrieves information from the \code{EEAaq} GitHub folder one of the available metadata.
+#' Since the end of 2024, the data EEA air quality retrieving dataflow is undergoing a major re-organization. In particular, since January 2025, raw data are accessible only through an online platform/dashboard.
+#' While \code{EEAaq} is build to explicitly deal with the automatic and constantly-updated system for raw data, the same process is not always possible for the metadata.
 #' Indeed, most of the metadata information are updated and require relevant pre-processing (i.e., data manipulation and cleaning) steps to make them consistent with the main database on pollutants concentrations.
-#' For this reasons, all the metadata files are periodically pre-processed and updated by the package maintainers. For issues with the data or code, please contact the development team at <pmaranzano.ricercastatistica@gmail.com>
+#' For this reasons, all the metadata files are periodically pre-processed and updated (on GitHub) by the package maintainers. For issues with the data or code, please contact the development team at <pmaranzano.ricercastatistica@gmail.com>
 #' @return a dataframe
 #' @export
 #'
 #' @examples
 #' \donttest{
 #' LAU <- EEAaq_get_dataframe(dataframe= "LAU")
+#' pollutant <- EEAaq_get_dataframe(dataframe = "pollutant")
+#' stations <- EEAaq_get_dataframe(dataframe = "stations")
+#' NUTS <- EEAaq_get_dataframe(dataframe = "NUTS")
 #' }
 #'
 EEAaq_get_dataframe <- function(dataframe = NULL){

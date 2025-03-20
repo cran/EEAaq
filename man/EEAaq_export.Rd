@@ -4,7 +4,7 @@
 \alias{EEAaq_export}
 \title{Export and save an \code{EEAaq_df} class object}
 \usage{
-EEAaq_export(data, filepath, format, shape = FALSE)
+EEAaq_export(data, filepath, format)
 }
 \arguments{
 \item{data}{an \code{EEAaq_df} class object.}
@@ -12,26 +12,30 @@ EEAaq_export(data, filepath, format, shape = FALSE)
 \item{filepath}{character string giving the file path}
 
 \item{format}{character string giving the format of the file. It must be one of 'csv' and 'txt'.}
-
-\item{shape}{logical value (T or F). If \code{TRUE} the shapefile associated to the \code{EEAaq_df} object
-given in input is saved in the same directory specified in \code{filepath}. If \code{FALSE} (the default),
-only the data frame containing the data is saved.}
 }
 \value{
 No return value, called for side effects.
 }
 \description{
-\code{EEAaq_export} saves an \code{EEAaq_df} class object as a \emph{.csv} or a \emph{.txt} file,
-and exports the associated shapefile as well.
+\code{EEAaq_export} export an \code{EEAaq_df} class object as a \emph{.csv} or a \emph{.txt} file.
 }
 \examples{
 \donttest{
-#Download a dataset with the function EEAaq_get_data, which generate an EEAaq_df object.
-data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",
-                       LAU_ISO = "IT", pollutants = "PM10",
-                       from = "2023-01-01", to = "2023-05-31")
+### Download PM10 data for the province (NUTS-3) of Milano (Italy)
+### from January 1st to January 31st, 2023
+`\%>\%` <- dplyr::`\%>\%`
+IDstations <- EEAaq_get_stations(byStation = TRUE, complete = FALSE)
+IDstations <- IDstations \%>\%
+                dplyr::filter(NUTS3 \%in\% c("Milano")) \%>\%
+                dplyr::pull(AirQualityStationEoICode) \%>\%
+                unique()
+data <- EEAaq_get_data(IDstations = IDstations, pollutants = "PM10",
+                       from = "2023-01-01", to = "2023-01-31",
+                       verbose = TRUE)
+
+### Export data to csv file
 temp <- tempdir()
 filepath <- paste0(temp, "/data.csv")
-EEAaq_export(data = data, filepath = filepath, format = "csv", shape = TRUE)
+EEAaq_export(data = data, filepath = filepath, format = "csv")
 }
 }

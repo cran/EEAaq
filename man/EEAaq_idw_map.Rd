@@ -2,27 +2,31 @@
 % Please edit documentation in R/EEAaq_idw_map.R
 \name{EEAaq_idw_map}
 \alias{EEAaq_idw_map}
-\title{Build a spatial interpolation map based on the Inverse Distance Weighting technique.}
+\title{Build a spatial interpolation map based on the Inverse Distance Weighting technique.
+The function \code{EEAaq_idw_map} requires as input a \code{EEAaq_taggr_df} or a \code{EEAaq_taggr_df_sfc} class object and produces a
+spatial interpolation map. Depending on the time frequency of the aggregation, multiple maps are generated, one for
+each timestamp. Interpolation maps may be exported as pdf, jpeg, png, gif and html.}
 \usage{
 EEAaq_idw_map(
   data = NULL,
   pollutant = NULL,
   aggr_fun,
-  bounds_level = NULL,
   distinct = FALSE,
   gradient = TRUE,
   idp = 2,
   nmax = NULL,
   maxdist = NULL,
+  NUTS_filler = NULL,
+  NUTS_extborder = NULL,
+  NUTS_intborder = NULL,
   dynamic = FALSE,
-  fill_NUTS_level = NULL,
   tile = "Esri.WorldGrayCanvas",
-  save = NULL,
   filepath = NULL,
   width = 1280,
   height = 720,
   res = 144,
   delay = 1,
+  save = NULL,
   verbose = TRUE
 )
 }
@@ -33,11 +37,8 @@ output of the \code{\link{EEAaq_time_aggregate}} function.}
 \item{pollutant}{vector containing the pollutant for which to build the map. It must be one of the pollutants
 contained in \code{data}.}
 
-\item{aggr_fun}{charachter containing the aggregation function to use for computing the interpolation. It must
+\item{aggr_fun}{character containing the aggregation function to use for computing the interpolation. It must
 be one of the statistics contained in \code{data}.}
-
-\item{bounds_level}{character containing the NUTS level or LAU for which draw internal boundaries.
-Admissible values are 'NUTS0', 'NUTS1', 'NUTS2', 'NUTS3', 'LAU'.}
 
 \item{distinct}{logic value (T or F). If \code{TRUE}, each map generated is printed and saved in distinct pages
 (for instance if \code{data} has a monthly frequency in a yearly time window, 12 distinct plots are generated).
@@ -58,21 +59,33 @@ space of the spatial locations. By default, all observations are used. For furth
 are used for the idw computation. By default, all observations are used.
 If combined with \code{nmax}, both criteria apply.}
 
+\item{NUTS_filler}{character containing the NUTS level or LAU for which to aggregate the idw computing,
+in order to obtain a uniform coloring inside each area at the specified level.
+Recall that the NUTS classification (Nomenclature of territorial units for statistics) is a hierarchical system for dividing up the economic territory of the EU and the UK.
+The levels are defined as follows:
+\itemize{
+\item{\strong{NUTS 0}: the whole country}
+\item{\strong{NUTS 1}: major socio-economic regions}
+\item{\strong{NUTS 2}: basic regions for the application of regional policies}
+\item{\strong{NUTS 3}: small regions for specific diagnoses}
+\item{\strong{LAU}: municipality}
+}
+For instance if \code{NUTS_filler = "LAU"}, each municipality is filled by the mean value of the pollutant
+concentration, computed by the idw, of each pixel inside the respective municipality). Allowed values are
+'NUTS0', 'NUTS1', 'NUTS2', 'NUTS3', and 'LAU'.}
+
+\item{NUTS_extborder}{character containing the NUTS level or LAU for which draw external boundaries.
+Admissible values are 'NUTS0', 'NUTS1', 'NUTS2', 'NUTS3', 'LAU'.}
+
+\item{NUTS_intborder}{character containing the NUTS level or LAU for which draw internal boundaries.
+Admissible values are 'NUTS0', 'NUTS1', 'NUTS2', 'NUTS3', 'LAU'.}
+
 \item{dynamic}{logic value (T or F). If \code{TRUE} the function creates a Leaflet map widget using
 \bold{htmlwidgets} (for further information see \code{\link[leaflet]{leaflet}}). If \code{FALSE} (the default)
 the maps generated are static.}
 
-\item{fill_NUTS_level}{character containing the NUTS level or LAU for which to aggregate the idw computing,
-in order to obtain a uniform coloring inside each area at the specified level.
-(For instance if \code{fill_NUTS_level = "LAU"}, each municipality is filled by the mean value of the pollutant
-concentration, computed by the idw, of each pixel inside the respective municipality). Allowed values are
-'NUTS0', 'NUTS1', 'NUTS2', 'NUTS3', 'LAU'.}
-
 \item{tile}{character representing the name of the provider tile. To see the full list of the providers, run
 \code{\link[leaflet]{providers}}. For further information see \code{\link[leaflet]{addProviderTiles}}.}
-
-\item{save}{character representing in which extension to save the map. Allowed values are 'jpeg', 'png', 'pdf'
-(if \code{dynamic = FALSE}), 'gif' (if \code{dynamic = FALSE & distinct = TRUE}), 'html' (if \code{dynamic = TRUE}).}
 
 \item{filepath}{a character string giving the file path.}
 
@@ -86,6 +99,9 @@ For further information see \code{\link{png}} or \code{\link{jpeg}}.}
 
 \item{delay}{numeric value specifying the time to show each image in seconds, when \code{save = "gif"}.}
 
+\item{save}{character representing in which extension to save the map. Allowed values are 'jpeg', 'png', 'pdf'
+(if \code{dynamic = FALSE}), 'gif' (if \code{dynamic = FALSE & distinct = TRUE}), 'html' (if \code{dynamic = TRUE}).}
+
 \item{verbose}{logic value (T or F). If \code{TRUE} (the default) information about the function progress are printed.
 If \code{FALSE} no message is printed.}
 }
@@ -93,10 +109,10 @@ If \code{FALSE} no message is printed.}
 cosa restituisce la funzione
 }
 \description{
-\code{EEAaq_idw_map} recieves as input a \code{EEAaq_taggr_df} or a \code{EEAaq_taggr_df_sfc} class object and produces a
+Build a spatial interpolation map based on the Inverse Distance Weighting technique.
+The function \code{EEAaq_idw_map} requires as input a \code{EEAaq_taggr_df} or a \code{EEAaq_taggr_df_sfc} class object and produces a
 spatial interpolation map. Depending on the time frequency of the aggregation, multiple maps are generated, one for
-each timestamp.
-It may be exported as pdf, jpeg, png, gif and html.
+each timestamp. Interpolation maps may be exported as pdf, jpeg, png, gif and html.
 }
 \details{
 \code{EEAaq_idw_map} create a spatial interpolation map, based on the Inverse Distance Weighting method (Shepard 1968).
@@ -115,30 +131,43 @@ and \eqn{s_i}.
 }
 \examples{
 \dontrun{
-# Download daily NO2 data in 2023 for Milan city (LAU)
-data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",LAU_ISO = "IT",
-pollutants = "NO2", from = "2023-01-01", to = "2023-12-31",  verbose = TRUE)
-# Monthly aggregation
+`\%>\%` <- dplyr::`\%>\%`
+### Filter all the stations installed in the city (LAU) of Milano (Italy)
+IDstations <- EEAaq_get_stations(byStation = FALSE, complete = FALSE)
+IDstations <- IDstations \%>\%
+                dplyr::filter(LAU_NAME == "Milano") \%>\%
+                dplyr::pull(AirQualityStationEoICode) \%>\%
+                unique()
+### Download NO2 measurement for the city of Milano from January 1st
+###   to December 31st, 2023
+data <- EEAaq_get_data(IDstations = IDstations, pollutants = "NO2",
+                       from = "2023-01-01", to = "2023-01-31",
+                       verbose = TRUE)
+
+### Monthly aggregation: compute station-specific monthly minimum,
+###   average, and maximum NO2 concentrations
 t_aggr <- EEAaq_time_aggregate(data = data, frequency = "monthly",
-aggr_fun = c("mean", "min", "max"))
+                               aggr_fun = c("mean", "min", "max"))
 
-# One map created
+### Static IDW interpolation of the average NO2 concentrations for the
+###   whole Lombardy region (NUTS_extborder = "NUTS2"). Interpolated values
+###   are then aggregated at the provincial level (NUTS_filler = "NUTS3")
 EEAaq_idw_map(data = t_aggr, pollutant = "NO2", aggr_fun = "mean",
-distinct = TRUE, gradient = FALSE, dynamic = TRUE, fill_NUTS_level = "LAU")
+              distinct = TRUE, gradient = FALSE,
+              dynamic = FALSE,
+              NUTS_filler = "NUTS3",
+              NUTS_extborder = "NUTS2")
 
-
-# Let's try to change the parameters fill_NUTS_level and dynamic:
-# now we are going to use a dataset containing PM10 concentrations
-# in Milan province (NUTS 3), during 2023
-data <- EEAaq_get_data(zone_name = "Centro (IT)", NUTS_level = "NUTS1",
-pollutant = "PM10", from = "2023-01-01", to = "2023-12-31")
-# Yearly aggregation
-t_aggr <- EEAaq_time_aggregate(data = data, frequency = "yearly", aggr_fun = "mean")
-
-# Let us generate one dynamic map, containing the municipalities inside the Milan province
-# filled with the mean concentration value for 2023, computed via IDW:
-EEAaq_idw_map(data = t_aggr, pollutant = "PM10", aggr_fun = "mean",
-distinct = TRUE, gradient = FALSE, dynamic = TRUE, fill_NUTS_level = "NUTS3")
+### Dynamic IDW interpolation map (interactive leafleat) of the average
+###   NO2 concentrations for the whole Lombardy region
+###   (NUTS_extborder = "NUTS2"). Interpolated values are then aggregated
+###   at the municipal level (NUTS_filler = "LAU")
+EEAaq_idw_map(data = t_aggr, pollutant = "NO2", aggr_fun = "mean",
+              distinct = TRUE, gradient = FALSE,
+              dynamic = TRUE,
+              NUTS_filler = "LAU",
+              NUTS_extborder = "NUTS2",
+              NUTS_intborder = "LAU")
 }
 
 }

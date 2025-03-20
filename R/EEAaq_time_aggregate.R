@@ -12,10 +12,28 @@
 #' required time aggregation.
 #' @examples
 #' \donttest{
-#' data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",LAU_ISO = "IT", pollutants = "PM10",
-#' from = "2023-01-01", to = "2023-12-31",  verbose = TRUE)
-#' EEAaq_time_aggregate(data = data, frequency = "monthly", aggr_fun = c("mean", "min", "max"))
-#' EEAaq_time_aggregate(data = data, frequency = "yearly", aggr_fun = "mean")
+#' `%>%` <- dplyr::`%>%`
+#' ### Filter all the stations installed in the city (LAU) of Milano (Italy)
+#' IDstations <- EEAaq_get_stations(byStation = FALSE, complete = FALSE)
+#' IDstations <- IDstations %>%
+#'                 dplyr::filter(LAU_NAME == "Milano") %>%
+#'                 dplyr::pull(AirQualityStationEoICode) %>%
+#'                 unique()
+#' ### Download NO2 measurement for the city of Milano from January 1st
+#' ###   to December 31st, 2023
+#' data <- EEAaq_get_data(IDstations = IDstations, pollutants = "NO2",
+#'                        from = "2023-01-01", to = "2023-01-31",
+#'                        verbose = TRUE)
+#'
+#' ### Monthly aggregation: compute station-specific monthly minimum,
+#' ###   average, and maximum NO2 concentrations
+#' t_aggr <- EEAaq_time_aggregate(data = data, frequency = "monthly",
+#'                                aggr_fun = c("mean", "min", "max"))
+#'
+#' ### Weekly aggregation: compute station-specific monthly average and
+#' ###   standard deviation concentrations
+#' t_aggr <- EEAaq_time_aggregate(data = data, frequency = "weekly",
+#'                                aggr_fun = c("mean", "sd"))
 #' }
 #'
 #' @export

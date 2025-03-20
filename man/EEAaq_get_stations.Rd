@@ -4,7 +4,7 @@
 \alias{EEAaq_get_stations}
 \title{Download EEA measurement station information dataset}
 \usage{
-EEAaq_get_stations(byStation = FALSE, complete = TRUE)
+EEAaq_get_stations(byStation = TRUE, complete = TRUE)
 }
 \arguments{
 \item{byStation}{Logic value (T or F). If \code{TRUE} the dataset is organized by station (one row for each measurement station).
@@ -25,6 +25,6 @@ Note that, for very small towns or certain countries, such as Turkey or Albania,
 }
 \examples{
 \donttest{
-EEAaq_get_stations(byStation = FALSE, complete = TRUE)
+EEAaq_get_stations(byStation = TRUE, complete = TRUE)
 }
 }

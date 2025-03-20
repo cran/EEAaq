@@ -2,16 +2,13 @@
 % Please edit documentation in R/EEAaq_map_stations.R
 \name{EEAaq_map_stations}
 \alias{EEAaq_map_stations}
-\title{Create a map representing the stations based on the data given in input or
-the information specified in the parameters}
+\title{Create a static or dynamic (interactive leaflet) map representing the geographical locations of the
+stations based on a user-defined input dataset of class \code{EEAaq_df} or \code{EEAaq_df_sfc}.}
 \usage{
 EEAaq_map_stations(
   data = NULL,
-  pollutant = NULL,
-  zone_name = NULL,
-  NUTS_level = NULL,
-  ID = FALSE,
-  bounds_level = NULL,
+  NUTS_extborder = NULL,
+  NUTS_intborder = NULL,
   color = TRUE,
   dynamic = FALSE
 )
@@ -19,20 +16,20 @@ EEAaq_map_stations(
 \arguments{
 \item{data}{an \code{EEAaq_df} or \code{EEAaq_df_sfc} class object, which is the output of the \code{\link{EEAaq_get_data}} function.}
 
-\item{pollutant}{character vector containing the short names of the pollutants for which locate the stations.}
+\item{NUTS_extborder}{character containing the NUTS level or LAU for which draw external boundaries.
+Admissible values are 'NUTS0', 'NUTS1', 'NUTS2', 'NUTS3', 'LAU'.
+Recall that the NUTS classification (Nomenclature of territorial units for statistics) is a hierarchical system for dividing up the economic territory of the EU and the UK.
+The levels are defined as follows:
+\itemize{
+\item{\strong{NUTS 0}: the whole country}
+\item{\strong{NUTS 1}: major socio-economic regions}
+\item{\strong{NUTS 2}: basic regions for the application of regional policies}
+\item{\strong{NUTS 3}: small regions for specific diagnoses}
+\item{\strong{LAU}: municipality}
+}}
 
-\item{zone_name}{character vector specifying the names of the zones to consider.
-The reference is the NUTS and LAU nomnclature by Eurostat.}
-
-\item{NUTS_level}{chracter that specify the level of NUTS or LAU, to which the \code{zone_name} belongs.}
-
-\item{ID}{logic value (T or F). If \code{TRUE} the character specified in the parameter
-zone_name is the unique identifier code provided by Eurostat. If \code{FALSE} (the default) it indicates that
-was specified the full name in latin characters.}
-
-\item{bounds_level}{character containing the NUTS level or LAU for which draw internal boundaries.
-Admissible values are "NUTS0", "NUTS1", "NUTS2", "NUTS3", "LAU" and it must be of a lower level then
-the one specified in the parameter \code{NUTS_level}.}
+\item{NUTS_intborder}{character containing the NUTS level or LAU for which draw internal boundaries.
+Admissible values are 'NUTS0', 'NUTS1', 'NUTS2', 'NUTS3', 'LAU'.}
 
 \item{color}{logical value (T or F). If \code{TRUE} (the default) the points are colored based on the pollutant they are
 able to detect. If \code{FALSE} the points have the same color.}
@@ -44,24 +41,39 @@ A map representing the specified area and the points representing the location o
 the specified pollutants.
 }
 \description{
-Build static or dynamic maps, representing the location of the stations that detects the specified pollutants.
-It recieves in input an \code{EEAaq_df} or an \code{EEAaq_df_sfc} class object, or, alternatively, it's possible to specify
-the required zones and pollutants with the same nomenclature system of the \code{\link{EEAaq_get_data}} function.
+Create a static or dynamic (interactive leaflet) map representing the geographical locations of the
+stations based on a user-defined input dataset of class \code{EEAaq_df} or \code{EEAaq_df_sfc}.
 }
 \examples{
 \donttest{
-# Using as example PM data in Lombardia (Italy) during the whole 2022,
-# it's possible to map the stations in two ways.
-# First of all specifying the zone information:
-EEAaq_map_stations(pollutant = c("PM10", "PM2.5"),
-zone_name = "Lombardia",NUTS_level = "NUTS2", ID = FALSE, color = FALSE)
-#In this case each point have the same color.
+library(sf)
+`\%>\%` <- dplyr::`\%>\%`
+### Retrieve all the stations measuring PM10 in Belgium
+IDstations <- EEAaq_get_stations(byStation = FALSE, complete = TRUE)
+IDstations <- IDstations \%>\%
+  dplyr::filter(ISO \%in\% c("BE"),
+                is.na(OperationalActivityEnd),
+                AirPollutant \%in\% "PM10") \%>\%
+  dplyr::pull(AirQualityStationEoICode) \%>\%
+  unique()
 
-# Alternatively, it is possible to use the data already downloaded in the parameter data,
-# coloring the points based on the pollutants the respective station detects.
-data <- EEAaq_get_data(zone_name = "15146", NUTS_level = "LAU",LAU_ISO = "IT",
-pollutants = "PM10", from = "2023-01-01", to = "2023-05-31",  verbose = TRUE)
-EEAaq_map_stations(data = data, color = TRUE)
+### Download the corresponding data from December 1st to December 31st, 2021
+data <- EEAaq_get_data(IDstations = IDstations, pollutants = "PM10",
+                       from = "2021-12-01", to = "2021-12-31",
+                       verbose = TRUE)
+
+### Static map of available stations across the whole country.
+### External borders are given by the union of the available regions (NUTS-2),
+###   while municipalities (LAUs) are used as inner borders.
+EEAaq_map_stations(data = data,
+                   NUTS_extborder = "NUTS1", NUTS_intborder = "NUTS2",
+                   color = TRUE, dynamic = FALSE)
+### Dynamic (interactive leaflet) map of available stations across the whole
+###  country. External borders are given by the union of the available
+###  regions (NUTS-2), while provinces (NUTS-3) are used as inner borders.
+EEAaq_map_stations(data = data,
+                   NUTS_extborder = "NUTS2", NUTS_intborder = "NUTS3",
+                   color = TRUE, dynamic = TRUE)
 }
 
 }
