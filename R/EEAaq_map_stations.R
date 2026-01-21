@@ -22,34 +22,31 @@
 #' the specified pollutants.
 #' @examples
 #' \donttest{
-#' library(sf)
 #' `%>%` <- dplyr::`%>%`
 #' ### Retrieve all the stations measuring PM10 in Belgium
-#' IDstations <- EEAaq_get_stations(byStation = FALSE, complete = TRUE)
+#' IDstations <- EEAaq_get_stations(byStation = FALSE, complete = FALSE)
 #' IDstations <- IDstations %>%
 #'   dplyr::filter(ISO %in% c("BE"),
-#'                 is.na(OperationalActivityEnd),
 #'                 AirPollutant %in% "PM10") %>%
 #'   dplyr::pull(AirQualityStationEoICode) %>%
 #'   unique()
 #'
-#' ### Download the corresponding data from December 1st to December 31st, 2021
+#' ### Download the corresponding data froom December 1st to December 31st, 2021
 #' data <- EEAaq_get_data(IDstations = IDstations, pollutants = "PM10",
-#'                        from = "2021-12-01", to = "2021-12-31",
-#'                        verbose = TRUE)
+#'                        from = "2021-12-01", to = "2021-12-31", verbose = TRUE)
 #'
-#' ### Static map of available stations across the whole country.
-#' ### External borders are given by the union of the available regions (NUTS-2),
-#' ###   while municipalities (LAUs) are used as inner borders.
+#' ### Static map of available stations across the whole country. External borders are given by the
+#' ###     union of the available regions (NUTS-2), while municipalities
+#' ## (LAUs) are used as inner borders.
 #' EEAaq_map_stations(data = data,
-#'                    NUTS_extborder = "NUTS1", NUTS_intborder = "NUTS2",
-#'                    color = TRUE, dynamic = FALSE)
-#' ### Dynamic (interactive leaflet) map of available stations across the whole
-#' ###  country. External borders are given by the union of the available
-#' ###  regions (NUTS-2), while provinces (NUTS-3) are used as inner borders.
+#'                   NUTS_extborder = "NUTS2", NUTS_intborder = "LAU",
+#'                   color = TRUE, dynamic = FALSE)
+#' ### Dynamic (interactive leaflet) map of available stations across the whole country.
+#' ## External borders are given by the
+#' ###     union of the available regions (NUTS-2), while provinces (NUTS-3) are used as inner borders.
 #' EEAaq_map_stations(data = data,
-#'                    NUTS_extborder = "NUTS2", NUTS_intborder = "NUTS3",
-#'                    color = TRUE, dynamic = TRUE)
+#'                   NUTS_extborder = "NUTS2", NUTS_intborder = "NUTS3",
+#'                   color = TRUE, dynamic = TRUE)
 #' }
 #'
 #' @export
@@ -95,10 +92,14 @@ EEAaq_map_stations <- function(data = NULL, NUTS_extborder = NULL, NUTS_intborde
 
   ##### Retrieve and filter metadata
   pollutants <- EEAaq_get_dataframe(dataframe = "pollutant")
-  LAU <- EEAaq_get_dataframe(dataframe = "LAU") %>%
-    dplyr::rename(geometry = .data$Lau_geometry) %>%
-    dplyr::filter(.data$ISO %in% unique(filter_stations$ISO),
-                  grepl(pattern = paste(AOI,sep = "",collapse = "|"), x = .data$NUTS3_ID))
+
+
+  LAU <- EEAaq_get_dataframe(dataframe = "LAU")
+  LAU <- dplyr::rename(LAU, geometry = Lau_geometry)
+  sf::st_geometry(LAU) <- "geometry"  # <--- NECESSARIO
+  LAU <- LAU[LAU$ISO %in% unique(filter_stations$ISO) &
+               grepl(pattern = paste(AOI, sep = "", collapse = "|"), x = LAU$NUTS3_ID), ]
+
   NUTS <- EEAaq_get_dataframe(dataframe = "NUTS") %>%
     dplyr::filter(.data$LEVL_CODE %in% c(code_extr(NUTS_extborder),
                                          code_extr(NUTS_intborder)),
@@ -188,12 +189,8 @@ EEAaq_map_stations <- function(data = NULL, NUTS_extborder = NULL, NUTS_intborde
       ggplot2::geom_sf(data = mappa, fill = NA, lwd = .4, col = "black") +
       ggplot2::geom_sf(data = mappa_internal, fill = NA, lwd = .7) +
       switch(as.character(color),
-             "TRUE" = {
-               ggplot2::geom_sf(data = points, ggplot2::aes(col = .data$AirPollutant))
-             },
-             "FALSE" = {
-               ggplot2::geom_sf(data = points, col = "black")
-             }
+             "TRUE" = {ggplot2::geom_sf(data = points, ggplot2::aes(col = .data$AirPollutant))},
+             "FALSE" = {ggplot2::geom_sf(data = points, col = "black")}
       ) +
       ggplot2::labs(x = "Longitude", y = "Latitude") +
       ggspatial::annotation_north_arrow(which_north = "true", height = ggplot2::unit(.7, "cm"), width = ggplot2::unit(.7, "cm")) +
@@ -222,96 +219,56 @@ EEAaq_map_stations <- function(data = NULL, NUTS_extborder = NULL, NUTS_intborde
 
     ##### Add external and internal borders
     if(NUTS_intborder == "NUTS0") {
-      mappa_nuts0 <- dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == 0 & substr(.data$NUTS_ID,1,code_extr(NUTS_extborder)+2) %in% mappa$NUTS_ID)
+      mappa_nuts0 <- dplyr::filter(sf::st_as_sf(NUTS), LEVL_CODE == 0 & substr(NUTS_ID,1,code_extr(NUTS_extborder)+2) %in% mappa$NUTS_ID)
       build_map <- leaflet::addPolygons(map = build_map, data = mappa_nuts0, group = "NUTS 0", color = "black",  weight = 1,
                                         label = ~ paste0("NUTS_ID: ",NUTS_ID," -- ",NUTS_NAME),
                                         smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
-                                        popup = paste0(
-                                          "Country: ",mappa_nuts0$CNTR_CODE,
-                                          "<br>","NUTS level: 0",
-                                          "<br>","Area ID: ",mappa_nuts0$NAME_ID,
-                                          "<br>","Area Name: ",mappa_nuts0$NAME_LATN
-                                        ),
+                                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
                                         options = leaflet::pathOptions(pane = "polygons"))
     } else if(NUTS_intborder == "NUTS1") {
-      mappa_nuts1 <- dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == 1 & substr(.data$NUTS_ID,1,code_extr(NUTS_extborder)+2) %in% mappa$NUTS_ID)
+      mappa_nuts1 <- dplyr::filter(sf::st_as_sf(NUTS), LEVL_CODE == 1 & substr(NUTS_ID,1,code_extr(NUTS_extborder)+2) %in% mappa$NUTS_ID)
       build_map <- leaflet::addPolygons(map = build_map, data = mappa_nuts1, group = "NUTS 1", color = "black",  weight = 1,
                                         label = ~ paste0("NUTS_ID: ",NUTS_ID," -- ",NUTS_NAME),
                                         smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
-                                        popup = paste0(
-                                          "Country: ",mappa_nuts1$CNTR_CODE,
-                                          "<br>","NUTS level: 1",
-                                          "<br>","Area ID: ",mappa_nuts1$NAME_ID,
-                                          "<br>","Area Name: ",mappa_nuts1$NAME_LATN
-                                        ),
+                                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
                                         options = leaflet::pathOptions(pane = "polygons"))
     } else if(NUTS_intborder == "NUTS2") {
-      mappa_nuts2 <- dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == 2 & substr(.data$NUTS_ID,1,code_extr(NUTS_extborder)+2) %in% mappa$NUTS_ID)
-      build_map <- leaflet::addPolygons(map = build_map, data = mappa_nuts2, group = "NUTS 2", color = "black",  weight = 1,
+      mappa_nuts2 <- dplyr::filter(sf::st_as_sf(NUTS),LEVL_CODE == 2 & substr(NUTS_ID,1,code_extr(NUTS_extborder)+2) %in% mappa$NUTS_ID)
+      build_map <- leaflet::addPolygons(map = build_map, data = mappa_nuts3, group = "NUTS 2", color = "black",  weight = 1,
                                         label = ~ paste0("NUTS_ID: ",NUTS_ID," -- ",NUTS_NAME),
                                         smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
-                                        popup = paste0(
-                                          "Country: ",mappa_nuts2$CNTR_CODE,
-                                          "<br>","NUTS level: 2",
-                                          "<br>","Area ID: ",mappa_nuts2$NAME_ID,
-                                          "<br>","Area Name: ",mappa_nuts2$NAME_LATN
-                                        ),
+                                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
                                         options = leaflet::pathOptions(pane = "polygons"))
     } else if(NUTS_intborder == "NUTS3") {
-      mappa_nuts3 <- dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == 3 & substr(.data$NUTS_ID,1,code_extr(NUTS_extborder)+2) %in% mappa$NUTS_ID)
+      mappa_nuts3 <- dplyr::filter(sf::st_as_sf(NUTS), LEVL_CODE == 3 & substr(NUTS_ID,1,code_extr(NUTS_extborder)+2) %in% mappa$NUTS_ID)
       build_map <- leaflet::addPolygons(map = build_map, data = mappa_nuts3, group = "NUTS 3", color = "black",  weight = 1,
                                         label = ~ paste0("NUTS_ID: ",NUTS_ID," -- ",NUTS_NAME),
                                         smoothFactor = 0.5,opacity = 1.0, fillOpacity = 0,
-                                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
-                                        popup = paste0(
-                                          "Country: ",mappa_nuts3$CNTR_CODE,
-                                          "<br>","NUTS level: 3",
-                                          "<br>","Area ID: ",mappa_nuts3$NAME_ID,
-                                          "<br>","Area Name: ",mappa_nuts3$NAME_LATN
-                                        ),
-                                        options = leaflet::pathOptions(pane = "polygons")
-      )
+                                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_nuts3$NAME_LATN,
+                                        options = leaflet::pathOptions(pane = "polygons"))
     } else if(NUTS_intborder == "LAU") {
       NUTS_LAU <- sf::st_join(x = sf::st_as_sf(LAU),
-                              y = dplyr::filter(sf::st_as_sf(NUTS), .data$LEVL_CODE == code_extr(NUTS_extborder)),
+                              y = dplyr::filter(sf::st_as_sf(NUTS), LEVL_CODE == code_extr(NUTS_extborder)),
                               largest = T)
-      mappa_lau <- dplyr::filter(sf::st_as_sf(NUTS_LAU), .data$LEVL_CODE == code_extr(NUTS_extborder) & .data$NUTS_ID %in% dplyr::pull(mappa, .data$NUTS_ID))
+      mappa_lau <- dplyr::filter(sf::st_as_sf(NUTS_LAU), LEVL_CODE == code_extr(NUTS_extborder) & NUTS_ID %in% dplyr::pull(mappa, NUTS_ID))
       build_map <- leaflet::addPolygons(map = build_map, data = mappa_lau,
                                         label = ~ paste0("NUTS_ID: ",NUTS_ID," -- ",NUTS_NAME),
                                         group = "LAU", color = "black",  weight = .5,
                                         smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0,
-                                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T),
-                                        popup = paste0(
-                                          "Country: ",mappa_lau$CNTR_CODE,
-                                          "<br>","LAU ID: ",mappa_lau$LAU_ID,
-                                          "<br>","LAU Name: ",mappa_lau$LAU_NAME
-                                        ),
+                                        highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = T), popup = mappa_lau$LAU_NAME,
                                         options = leaflet::pathOptions(pane = "polygons"))
     }
 
     ##### Add stations coordinates
-    build_map <- leaflet::addCircleMarkers(
-      map = build_map,
-      data = points,
-      label = ~ paste0("EoICode: ", AirQualityStationEoICode," -- ",AirPollutant),
-      fillColor = switch(
-        as.character(color),
-        "TRUE" = {
-          ~ mypal(points$AirPollutant)
-        },
-        "FALSE" = {"black"}
-      ),
-      fillOpacity = 1, radius = 4, stroke = F,
-      popup = paste("Air Quality Station EoI Code:", points$AirQualityStationEoICode, "<br>", "Air Quality Station National Code:", points$AirQualityStationNatCode, "<br>",  "Air Quality Station Name:", points$AirQualityStationName,
-                    "<br>","Pollutants:", points$AirPollutant,
-                    "<br>","Country:", points$ISO, "<br>","NUTS 1:", points$NUTS1,
-                    "<br>", "NUTS 2:", points$NUTS2, "<br>", "NUTS 3:", points$NUTS3, "<br>", "LAU:", points$LAU_NAME),
-      labelOptions = leaflet::labelOptions(bringToFront = T),
-      options = leaflet::pathOptions(pane = "circles")
-    )
+    build_map <- leaflet::addCircleMarkers(map = build_map, data = points, label = ~ paste0("EoICode: ",AirQualityStationEoICode," -- ",AirPollutant),
+                                           fillColor = switch(as.character(color), "TRUE" = {~mypal(points$AirPollutant)}, "FALSE" = {"black"}),
+                                           fillOpacity = 1, radius = 4, stroke = F,
+                                           popup = paste("Air Quality Station EoI Code:", points$AirQualityStationEoICode, "<br>", "Air Quality Station National Code:", points$AirQualityStationNatCode, "<br>",  "Air Quality Station Name:", points$AirQualityStationName,
+                                                         "<br>","Pollutants:", points$AirPollutant,
+                                                         "<br>","Country:", points$ISO, "<br>","NUTS 1:", points$NUTS1,
+                                                         "<br>", "NUTS 2:", points$NUTS2, "<br>", "NUTS 3:", points$NUTS3, "<br>", "LAU:", points$LAU_NAME),
+                                           labelOptions = leaflet::labelOptions(bringToFront = T),
+                                           options = leaflet::pathOptions(pane = "circles"))
 
     ##### Add legend
     build_map <- switch(as.character(color),
@@ -327,5 +284,3 @@ EEAaq_map_stations <- function(data = NULL, NUTS_extborder = NULL, NUTS_intborde
 
   return(build_map)
 }
-
-

@@ -4,6 +4,7 @@
 #'@param year expressed as four digit (YYYY)
 #' @return A tibble containing  LAUs  information with selected columns (NUTS_ID, LEVL_CODE...)
 #'
+#'
 
 get_NUTS <- function(year= "Null") {
   `%>%` <- dplyr::`%>%`

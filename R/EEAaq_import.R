@@ -9,15 +9,14 @@
 #' \donttest{
 #' `%>%` <- dplyr::`%>%`
 #' ### Download PM10 data for the province (NUTS-3) of Milano (Italy)
-#' ###   from January 1st to January 31st, 2023
+#' ## from January 1st to January 31st, 2023
 #' IDstations <- EEAaq_get_stations(byStation = TRUE, complete = FALSE)
 #' IDstations <- IDstations %>%
 #'                 dplyr::filter(NUTS3 %in% c("Milano")) %>%
 #'                 dplyr::pull(AirQualityStationEoICode) %>%
 #'                 unique()
 #' data <- EEAaq_get_data(IDstations = IDstations, pollutants = "PM10",
-#'                        from = "2023-01-01", to = "2023-01-31",
-#'                        verbose = TRUE)
+#'                        from = "2023-01-01", to = "2023-01-31", verbose = TRUE)
 #'
 #' ### Export data to csv file
 #' temp <- tempdir()

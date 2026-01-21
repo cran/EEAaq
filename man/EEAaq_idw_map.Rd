@@ -131,43 +131,38 @@ and \eqn{s_i}.
 }
 \examples{
 \dontrun{
-`\%>\%` <- dplyr::`\%>\%`
 ### Filter all the stations installed in the city (LAU) of Milano (Italy)
 IDstations <- EEAaq_get_stations(byStation = FALSE, complete = FALSE)
+ `\%>\%` <- dplyr::`\%>\%`
 IDstations <- IDstations \%>\%
                 dplyr::filter(LAU_NAME == "Milano") \%>\%
                 dplyr::pull(AirQualityStationEoICode) \%>\%
                 unique()
-### Download NO2 measurement for the city of Milano from January 1st
-###   to December 31st, 2023
+### Download NO2 measurement for the city of Milano from January 1st to December 31st, 2023
 data <- EEAaq_get_data(IDstations = IDstations, pollutants = "NO2",
-                       from = "2023-01-01", to = "2023-01-31",
-                       verbose = TRUE)
+                       from = "2023-01-01", to = "2023-01-31", verbose = TRUE)
 
 ### Monthly aggregation: compute station-specific monthly minimum,
-###   average, and maximum NO2 concentrations
+## average, and maximum NO2 concentrations
 t_aggr <- EEAaq_time_aggregate(data = data, frequency = "monthly",
                                aggr_fun = c("mean", "min", "max"))
 
-### Static IDW interpolation of the average NO2 concentrations for the
-###   whole Lombardy region (NUTS_extborder = "NUTS2"). Interpolated values
-###   are then aggregated at the provincial level (NUTS_filler = "NUTS3")
+### Static IDW interpolation of the average NO2 concentrations for the whole Lombardy
+###    region (NUTS_extborder = "NUTS2"). Interpolated values are then aggregated at the provincial
+###    level (NUTS_filler = "NUTS3")
 EEAaq_idw_map(data = t_aggr, pollutant = "NO2", aggr_fun = "mean",
               distinct = TRUE, gradient = FALSE,
               dynamic = FALSE,
-              NUTS_filler = "NUTS3",
-              NUTS_extborder = "NUTS2")
+              NUTS_filler = "NUTS3", NUTS_extborder = "NUTS2")
 
 ### Dynamic IDW interpolation map (interactive leafleat) of the average
-###   NO2 concentrations for the whole Lombardy region
-###   (NUTS_extborder = "NUTS2"). Interpolated values are then aggregated
-###   at the municipal level (NUTS_filler = "LAU")
+## NO2 concentrations for the whole Lombardy
+###    region (NUTS_extborder = "NUTS2"). Interpolated values are then aggregated at the municipal
+###    level (NUTS_filler = "LAU")
 EEAaq_idw_map(data = t_aggr, pollutant = "NO2", aggr_fun = "mean",
               distinct = TRUE, gradient = FALSE,
               dynamic = TRUE,
-              NUTS_filler = "LAU",
-              NUTS_extborder = "NUTS2",
-              NUTS_intborder = "LAU")
+              NUTS_filler = "LAU", NUTS_extborder = "NUTS2", NUTS_intborder = "LAU")
 }
 
 }

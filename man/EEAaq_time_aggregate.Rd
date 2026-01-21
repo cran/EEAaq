@@ -30,26 +30,24 @@ based on the specified \code{frequency} and the aggregation functions \code{aggr
 }
 \examples{
 \donttest{
-`\%>\%` <- dplyr::`\%>\%`
 ### Filter all the stations installed in the city (LAU) of Milano (Italy)
 IDstations <- EEAaq_get_stations(byStation = FALSE, complete = FALSE)
+`\%>\%` <- dplyr::`\%>\%`
 IDstations <- IDstations \%>\%
                 dplyr::filter(LAU_NAME == "Milano") \%>\%
                 dplyr::pull(AirQualityStationEoICode) \%>\%
                 unique()
-### Download NO2 measurement for the city of Milano from January 1st
-###   to December 31st, 2023
+### Download NO2 measurement for the city of Milano from January 1st to December 31st, 2023
 data <- EEAaq_get_data(IDstations = IDstations, pollutants = "NO2",
-                       from = "2023-01-01", to = "2023-01-31",
-                       verbose = TRUE)
+                       from = "2023-01-01", to = "2023-01-31", verbose = TRUE)
 
 ### Monthly aggregation: compute station-specific monthly minimum,
-###   average, and maximum NO2 concentrations
+## average, and maximum NO2 concentrations
 t_aggr <- EEAaq_time_aggregate(data = data, frequency = "monthly",
                                aggr_fun = c("mean", "min", "max"))
 
-### Weekly aggregation: compute station-specific monthly average and
-###   standard deviation concentrations
+### Weekly aggregation: compute station-specific monthly average
+##and standard deviation concentrations
 t_aggr <- EEAaq_time_aggregate(data = data, frequency = "weekly",
                                aggr_fun = c("mean", "sd"))
 }

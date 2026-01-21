@@ -46,34 +46,31 @@ stations based on a user-defined input dataset of class \code{EEAaq_df} or \code
 }
 \examples{
 \donttest{
-library(sf)
 `\%>\%` <- dplyr::`\%>\%`
 ### Retrieve all the stations measuring PM10 in Belgium
-IDstations <- EEAaq_get_stations(byStation = FALSE, complete = TRUE)
+IDstations <- EEAaq_get_stations(byStation = FALSE, complete = FALSE)
 IDstations <- IDstations \%>\%
   dplyr::filter(ISO \%in\% c("BE"),
-                is.na(OperationalActivityEnd),
                 AirPollutant \%in\% "PM10") \%>\%
   dplyr::pull(AirQualityStationEoICode) \%>\%
   unique()
 
-### Download the corresponding data from December 1st to December 31st, 2021
+### Download the corresponding data froom December 1st to December 31st, 2021
 data <- EEAaq_get_data(IDstations = IDstations, pollutants = "PM10",
-                       from = "2021-12-01", to = "2021-12-31",
-                       verbose = TRUE)
+                       from = "2021-12-01", to = "2021-12-31", verbose = TRUE)
 
-### Static map of available stations across the whole country.
-### External borders are given by the union of the available regions (NUTS-2),
-###   while municipalities (LAUs) are used as inner borders.
+### Static map of available stations across the whole country. External borders are given by the
+###     union of the available regions (NUTS-2), while municipalities
+## (LAUs) are used as inner borders.
 EEAaq_map_stations(data = data,
-                   NUTS_extborder = "NUTS1", NUTS_intborder = "NUTS2",
-                   color = TRUE, dynamic = FALSE)
-### Dynamic (interactive leaflet) map of available stations across the whole
-###  country. External borders are given by the union of the available
-###  regions (NUTS-2), while provinces (NUTS-3) are used as inner borders.
+                  NUTS_extborder = "NUTS2", NUTS_intborder = "LAU",
+                  color = TRUE, dynamic = FALSE)
+### Dynamic (interactive leaflet) map of available stations across the whole country.
+## External borders are given by the
+###     union of the available regions (NUTS-2), while provinces (NUTS-3) are used as inner borders.
 EEAaq_map_stations(data = data,
-                   NUTS_extborder = "NUTS2", NUTS_intborder = "NUTS3",
-                   color = TRUE, dynamic = TRUE)
+                  NUTS_extborder = "NUTS2", NUTS_intborder = "NUTS3",
+                  color = TRUE, dynamic = TRUE)
 }
 
 }

@@ -78,43 +78,38 @@
 #' @return cosa restituisce la funzione
 #' @examples
 #' \dontrun{
-#' `%>%` <- dplyr::`%>%`
 #' ### Filter all the stations installed in the city (LAU) of Milano (Italy)
 #' IDstations <- EEAaq_get_stations(byStation = FALSE, complete = FALSE)
+#'  `%>%` <- dplyr::`%>%`
 #' IDstations <- IDstations %>%
 #'                 dplyr::filter(LAU_NAME == "Milano") %>%
 #'                 dplyr::pull(AirQualityStationEoICode) %>%
 #'                 unique()
-#' ### Download NO2 measurement for the city of Milano from January 1st
-#' ###   to December 31st, 2023
+#' ### Download NO2 measurement for the city of Milano from January 1st to December 31st, 2023
 #' data <- EEAaq_get_data(IDstations = IDstations, pollutants = "NO2",
-#'                        from = "2023-01-01", to = "2023-01-31",
-#'                        verbose = TRUE)
+#'                        from = "2023-01-01", to = "2023-01-31", verbose = TRUE)
 #'
 #' ### Monthly aggregation: compute station-specific monthly minimum,
-#' ###   average, and maximum NO2 concentrations
+#' ## average, and maximum NO2 concentrations
 #' t_aggr <- EEAaq_time_aggregate(data = data, frequency = "monthly",
 #'                                aggr_fun = c("mean", "min", "max"))
 #'
-#' ### Static IDW interpolation of the average NO2 concentrations for the
-#' ###   whole Lombardy region (NUTS_extborder = "NUTS2"). Interpolated values
-#' ###   are then aggregated at the provincial level (NUTS_filler = "NUTS3")
+#' ### Static IDW interpolation of the average NO2 concentrations for the whole Lombardy
+#' ###    region (NUTS_extborder = "NUTS2"). Interpolated values are then aggregated at the provincial
+#' ###    level (NUTS_filler = "NUTS3")
 #' EEAaq_idw_map(data = t_aggr, pollutant = "NO2", aggr_fun = "mean",
 #'               distinct = TRUE, gradient = FALSE,
 #'               dynamic = FALSE,
-#'               NUTS_filler = "NUTS3",
-#'               NUTS_extborder = "NUTS2")
+#'               NUTS_filler = "NUTS3", NUTS_extborder = "NUTS2")
 #'
 #' ### Dynamic IDW interpolation map (interactive leafleat) of the average
-#' ###   NO2 concentrations for the whole Lombardy region
-#' ###   (NUTS_extborder = "NUTS2"). Interpolated values are then aggregated
-#' ###   at the municipal level (NUTS_filler = "LAU")
+#' ## NO2 concentrations for the whole Lombardy
+#' ###    region (NUTS_extborder = "NUTS2"). Interpolated values are then aggregated at the municipal
+#' ###    level (NUTS_filler = "LAU")
 #' EEAaq_idw_map(data = t_aggr, pollutant = "NO2", aggr_fun = "mean",
 #'               distinct = TRUE, gradient = FALSE,
 #'               dynamic = TRUE,
-#'               NUTS_filler = "LAU",
-#'               NUTS_extborder = "NUTS2",
-#'               NUTS_intborder = "LAU")
+#'               NUTS_filler = "LAU", NUTS_extborder = "NUTS2", NUTS_intborder = "LAU")
 #' }
 #'
 #' @export
@@ -656,18 +651,24 @@ EEAaq_idw_map <- function(data = NULL, pollutant = NULL, aggr_fun, distinct = FA
     }
 
     if("gif" %in% save) {
-      rlang::check_installed("gifski", reason = "Package \"gifski\" must be installed to save the plot as a gif.")
+      #stopifnot("The package \'gifski\' is required for saving the plot as a gif. " = "gifski" %in% rownames(utils::installed.packages()))
       stopifnot("Can not save as GIF" = "ggarrange" %notin% class(map))
       gifski::save_gif(print(map), gif_file = filepath, width = width, height = height, res = res, delay = delay)
     } else if(save == "pdf") {
-      multipage <- ggpubr::ggarrange(plotlist = map, nrow=1, ncol=1)
-      ggpubr::ggexport(multipage, filename = filepath, width = width, height = height, res = res)
+      do.call(save, args = list(file = filepath))
+      print(map)
+      grDevices::dev.off()
     } else if(save %in% c("jpeg", "png")) {
       ind <- 1:length(map)
       filepath <- paste0(substr(filepath, 1, ifelse(save == "jpeg", nchar(filepath) - 5, nchar(filepath) - 4)), ind, ifelse(save == "jpeg", ".jpeg", ".png"))
       for (i in 1:length(map)) {
-        ggpubr::ggexport(map[[i]], filename = filepath[i], width = width, height = height, res = res)
+        do.call(save, args = list(file = filepath[i], width = width, height = height, res = res))
+        print(map[i])
+        grDevices::dev.off()
       }
+    } else if(save %in% "html") {
+      stopifnot("Can not save as html if dynamic = F" = dynamic == T)
+      htmlwidgets::saveWidget(map, file = filepath, selfcontained = F)
     } else {
       stop("Can not save the plots in this format, type should be either 'pdf', 'jpeg' or 'png'.")
     }
